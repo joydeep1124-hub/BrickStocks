@@ -4,37 +4,37 @@
    ═══════════════════════════════════════════════════════ */
 
 :root {
-  --bg:  #07090d;
-  --bg2: #0d1117;
-  --bg3: #13181f;
-  --bg4: #1a2030;
-  --bg5: #1e2637;
-  --border:  rgba(255,255,255,0.06);
-  --border2: rgba(255,255,255,0.11);
-  --border3: rgba(255,255,255,0.16);
+  --bg:  #07101e;
+  --bg2: #091527;
+  --bg3: #0d1c30;
+  --bg4: #122240;
+  --bg5: #162845;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --border3: rgba(255,255,255,0.18);
 
-  --text:  #e6edf3;
-  --text2: #8b949e;
-  --text3: #5a6475;
-  --text4: #3d4450;
+  --text:  #e8f0fb;
+  --text2: #7e97b8;
+  --text3: #4d6380;
+  --text4: #2e4060;
 
-  --accent:   #22d3ee;   /* cyan — BrickStocks brand */
-  --accent2:  #06b6d4;
-  --accent3:  #0891b2;
-  --accent-dim:  rgba(34,211,238,0.12);
-  --accent-dim2: rgba(34,211,238,0.06);
+  --accent:   #10b981;   /* emerald green — BrickStocks brand */
+  --accent2:  #059669;
+  --accent3:  #047857;
+  --accent-dim:  rgba(16,185,129,0.13);
+  --accent-dim2: rgba(16,185,129,0.06);
 
   --up:     #22c55e;     /* gains */
   --up-dim: rgba(34,197,94,0.12);
-  --dn:     #ef4444;     /* losses */
-  --dn-dim: rgba(239,68,68,0.10);
+  --dn:     #f43f5e;     /* losses */
+  --dn-dim: rgba(244,63,94,0.10);
 
   --gold:       #f59e0b;
   --gold-dim:   rgba(245,158,11,0.12);
   --purple:     #a78bfa;
   --purple-dim: rgba(167,139,250,0.12);
-  --blue:       #3b82f6;
-  --blue-dim:   rgba(59,130,246,0.12);
+  --blue:       #60a5fa;
+  --blue-dim:   rgba(96,165,250,0.12);
   --amber:      #fbbf24;
 
   --font-display: 'Syne', sans-serif;
@@ -45,9 +45,9 @@
   --radius-lg: 16px;
   --radius-xl: 22px;
 
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
-  --shadow:    0 4px 20px rgba(0,0,0,0.5);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.6);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.5);
+  --shadow:    0 4px 24px rgba(0,0,0,0.6);
+  --shadow-lg: 0 8px 48px rgba(0,0,0,0.7);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -73,7 +73,7 @@ body::before {
   transform: translateX(-50%);
   width: 1200px;
   height: 500px;
-  background: radial-gradient(ellipse, rgba(34,211,238,0.025) 0%, transparent 65%);
+  background: radial-gradient(ellipse, rgba(16,185,129,0.04) 0%, rgba(96,165,250,0.02) 50%, transparent 70%);
   pointer-events: none;
   z-index: 0;
   animation: ambient-drift 12s ease-in-out infinite alternate;
@@ -87,7 +87,7 @@ body::before {
 /* ─── NAV ─────────────────────────────────────────────── */
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  background: rgba(7,9,13,0.90);
+  background: rgba(7,16,30,0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);

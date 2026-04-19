@@ -18,62 +18,87 @@
 <link rel="stylesheet" href="/css/shared.css">
 <link rel="stylesheet" href="/css/mobile.css">
 <style>
-/* ── Index-specific styles ─────────────────────────── */
+/* ── Hero — split screen ───────────────────────────── */
 .hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
   padding: 80px 0 64px;
-  text-align: center; position: relative; z-index: 1;
+  position: relative; z-index: 1;
+  min-height: calc(100vh - 120px);
 }
 
-.hero-eyebrow {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.2);
-  border-radius: 20px; padding: 5px 14px;
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; padding: 48px 0 40px; }
+  .hero-right { display: none; }
+}
+
+/* LEFT side */
+.hero-left { display: flex; flex-direction: column; gap: 0; }
+
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-dim); border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 6px; padding: 5px 12px;
   font-family: var(--font-mono); font-size: 11px; font-weight: 600;
-  color: var(--accent); margin-bottom: 20px; letter-spacing: 0.04em;
+  color: var(--accent); margin-bottom: 28px; letter-spacing: 0.06em;
+  text-transform: uppercase; width: fit-content;
+}
+
+.hero-tag-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
 }
 
 .hero-title {
-  font-family: var(--font-display); font-size: clamp(36px, 5vw, 64px);
-  font-weight: 800; letter-spacing: -2px; color: var(--text);
-  line-height: 1.1; margin-bottom: 18px;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 4.5vw, 68px);
+  font-weight: 800; letter-spacing: -2.5px;
+  color: var(--text); line-height: 1.05;
+  margin-bottom: 24px;
 }
 
-.hero-title .hl {
+.hero-title em {
+  font-style: normal;
   color: var(--accent);
-  background: linear-gradient(90deg, var(--accent), #38bdf8);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .hero-sub {
-  font-size: 17px; color: var(--text2); max-width: 580px;
-  margin: 0 auto 32px; line-height: 1.7;
+  font-size: 16px; color: var(--text2);
+  max-width: 460px; line-height: 1.75;
+  margin-bottom: 36px;
 }
 
 .hero-ctas {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 48px;
 }
 
 .hero-cta-primary {
   display: inline-flex; align-items: center; gap: 8px;
-  background: var(--accent); color: #07090d;
+  background: var(--accent); color: #fff;
   font-family: var(--font-display); font-weight: 800; font-size: 15px;
-  padding: 13px 28px; border-radius: 12px; text-decoration: none;
+  padding: 13px 28px; border-radius: 10px; text-decoration: none;
   transition: all 0.2s; letter-spacing: 0.2px;
-  box-shadow: 0 0 24px rgba(34,211,238,0.25);
+  box-shadow: 0 4px 24px rgba(16,185,129,0.3);
 }
 
 .hero-cta-primary:hover {
   background: var(--accent2); transform: translateY(-2px);
-  box-shadow: 0 0 32px rgba(34,211,238,0.35);
+  box-shadow: 0 6px 32px rgba(16,185,129,0.4);
 }
 
 .hero-cta-secondary {
   display: inline-flex; align-items: center; gap: 8px;
   background: none; color: var(--text2);
   font-family: var(--font-display); font-weight: 700; font-size: 15px;
-  padding: 13px 24px; border-radius: 12px; text-decoration: none;
+  padding: 13px 24px; border-radius: 10px; text-decoration: none;
   border: 1px solid var(--border2); transition: all 0.2s;
 }
 
@@ -82,28 +107,86 @@
   background: rgba(255,255,255,0.04);
 }
 
-.hero-stats {
-  display: flex; align-items: center; justify-content: center; gap: 32px;
-  margin-top: 40px; flex-wrap: wrap;
+.hero-proof {
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
 }
 
-.hero-stat {
-  text-align: center;
+.hero-proof-item {
+  display: flex; flex-direction: column; gap: 2px;
 }
 
-.hero-stat-val {
-  font-family: var(--font-display); font-size: 26px;
-  font-weight: 800; letter-spacing: -1px; color: var(--text);
+.hero-proof-val {
+  font-family: var(--font-display); font-size: 22px;
+  font-weight: 800; letter-spacing: -0.5px; color: var(--text);
 }
 
-.hero-stat-label {
-  font-size: 12px; color: var(--text3); font-family: var(--font-mono);
-  margin-top: 2px;
+.hero-proof-lbl {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em;
 }
 
-.hero-divider {
-  width: 1px; height: 40px; background: var(--border);
+.hero-proof-div { width: 1px; height: 32px; background: var(--border2); }
+
+/* RIGHT side — live trading cards */
+.hero-right {
+  display: flex; flex-direction: column; gap: 12px;
+  position: relative;
 }
+
+.hero-card {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  animation: cardIn 0.6s ease both;
+}
+
+.hero-card:nth-child(1) { animation-delay: 0.1s; }
+.hero-card:nth-child(2) { animation-delay: 0.2s; margin-left: 24px; }
+.hero-card:nth-child(3) { animation-delay: 0.3s; }
+.hero-card:nth-child(4) { animation-delay: 0.4s; margin-left: 24px; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.hero-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.hero-card.up { border-left: 3px solid var(--up); }
+.hero-card.dn { border-left: 3px solid var(--dn); }
+
+.hc-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+
+.hc-icon.stock  { background: rgba(96,165,250,0.12); }
+.hc-icon.crypto { background: rgba(245,158,11,0.12); }
+.hc-icon.forex  { background: rgba(167,139,250,0.12); }
+
+.hc-info { flex: 1; }
+.hc-sym  { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.hc-name { font-size: 11px; color: var(--text3); }
+
+.hc-right { text-align: right; }
+.hc-price { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); margin-bottom: 4px; }
+.hc-chg   { font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 5px; }
+.hc-chg.up { background: var(--up-dim); color: var(--up); }
+.hc-chg.dn { background: var(--dn-dim); color: var(--dn); }
+
+.hc-spark { width: 72px; flex-shrink: 0; }
+
+/* keep old stat vars for other pages */
+.hero-stat-val   { font-family:var(--font-display); font-size:26px; font-weight:800; letter-spacing:-1px; color:var(--text); }
+.hero-stat-label { font-size:12px; color:var(--text3); font-family:var(--font-mono); margin-top:2px; }
+.hero-divider    { width:1px; height:40px; background:var(--border); }
 
 /* ── Market overview strip ─────────────────────────── */
 .market-strip-label {
@@ -429,42 +512,128 @@
 
   <!-- HERO -->
   <div class="hero" id="hero-section">
-    <div class="hero-eyebrow">
-      <div class="live-dot"></div>
-      Real market data · Fake money · Real competition
+
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-tag">
+        <div class="hero-tag-dot"></div>
+        Live market data · Free to play
+      </div>
+
+      <h1 class="hero-title">
+        Paper trade.<br>
+        <em>Compete</em><br>
+        for real.
+      </h1>
+
+      <p class="hero-sub">
+        $10,000 in virtual money. Real prices from NYSE, NASDAQ, and crypto exchanges.
+        2-week leagues where the best return wins.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="/trade.html" class="hero-cta-primary">Start Trading Free →</a>
+        <a href="/league.html" class="hero-cta-secondary">🏆 Join a League</a>
+      </div>
+
+      <div class="hero-proof">
+        <div class="hero-proof-item">
+          <div class="hero-proof-val" id="stat-traders">2,400+</div>
+          <div class="hero-proof-lbl">Active Traders</div>
+        </div>
+        <div class="hero-proof-div"></div>
+        <div class="hero-proof-item">
+          <div class="hero-proof-val">$10K</div>
+          <div class="hero-proof-lbl">Starting Capital</div>
+        </div>
+        <div class="hero-proof-div"></div>
+        <div class="hero-proof-item">
+          <div class="hero-proof-val">5,000+</div>
+          <div class="hero-proof-lbl">Assets</div>
+        </div>
+        <div class="hero-proof-div"></div>
+        <div class="hero-proof-item">
+          <div class="hero-proof-val" id="stat-leagues">3</div>
+          <div class="hero-proof-lbl">Active Leagues</div>
+        </div>
+      </div>
     </div>
-    <h1 class="hero-title">
-      Trade like a pro.<br>
-      <span class="hl">Compete like a champion.</span>
-    </h1>
-    <p class="hero-sub">
-      Master stocks, crypto, forex and commodities with $10,000 virtual money.
-      Join 2-week leagues, crush your friends, and climb the leaderboard.
-    </p>
-    <div class="hero-ctas">
-      <a href="/trade.html" class="hero-cta-primary">🚀 Start Trading Free</a>
-      <a href="/league.html" class="hero-cta-secondary">🏆 Join a League →</a>
-    </div>
-    <div class="hero-stats">
-      <div class="hero-stat">
-        <div class="hero-stat-val" id="stat-traders">—</div>
-        <div class="hero-stat-label">Active Traders</div>
+
+    <!-- RIGHT — live trading cards -->
+    <div class="hero-right" aria-hidden="true">
+
+      <div class="hero-card up">
+        <div class="hc-icon stock">📈</div>
+        <div class="hc-info">
+          <div class="hc-sym">NVDA</div>
+          <div class="hc-name">NVIDIA Corp.</div>
+        </div>
+        <div class="hc-spark">
+          <svg width="72" height="32" viewBox="0 0 72 32" fill="none">
+            <polyline points="0,26 12,22 24,18 36,20 48,12 60,8 72,4"
+              stroke="#22c55e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hc-right">
+          <div class="hc-price">$875.40</div>
+          <div class="hc-chg up">+5.23%</div>
+        </div>
       </div>
-      <div class="hero-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">$10K</div>
-        <div class="hero-stat-label">Starting Capital</div>
+
+      <div class="hero-card up">
+        <div class="hc-icon crypto">₿</div>
+        <div class="hc-info">
+          <div class="hc-sym">BTC</div>
+          <div class="hc-name">Bitcoin</div>
+        </div>
+        <div class="hc-spark">
+          <svg width="72" height="32" viewBox="0 0 72 32" fill="none">
+            <polyline points="0,28 12,24 24,20 36,22 48,14 60,10 72,6"
+              stroke="#22c55e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hc-right">
+          <div class="hc-price">$67,420</div>
+          <div class="hc-chg up">+3.45%</div>
+        </div>
       </div>
-      <div class="hero-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">5,000+</div>
-        <div class="hero-stat-label">Assets to Trade</div>
+
+      <div class="hero-card dn">
+        <div class="hc-icon stock">🚗</div>
+        <div class="hc-info">
+          <div class="hc-sym">TSLA</div>
+          <div class="hc-name">Tesla Inc.</div>
+        </div>
+        <div class="hc-spark">
+          <svg width="72" height="32" viewBox="0 0 72 32" fill="none">
+            <polyline points="0,6 12,10 24,14 36,12 48,18 60,22 72,26"
+              stroke="#f43f5e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hc-right">
+          <div class="hc-price">$247.80</div>
+          <div class="hc-chg dn">−2.14%</div>
+        </div>
       </div>
-      <div class="hero-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-val" id="stat-leagues">—</div>
-        <div class="hero-stat-label">Active Leagues</div>
+
+      <div class="hero-card up">
+        <div class="hc-icon forex">💱</div>
+        <div class="hc-info">
+          <div class="hc-sym">EUR/USD</div>
+          <div class="hc-name">Euro / US Dollar</div>
+        </div>
+        <div class="hc-spark">
+          <svg width="72" height="32" viewBox="0 0 72 32" fill="none">
+            <polyline points="0,20 12,18 24,16 36,17 48,14 60,13 72,11"
+              stroke="#22c55e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hc-right">
+          <div class="hc-price">1.0856</div>
+          <div class="hc-chg up">+0.12%</div>
+        </div>
       </div>
+
     </div>
   </div>
 
