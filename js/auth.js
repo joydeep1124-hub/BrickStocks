@@ -473,8 +473,11 @@
     btn.disabled = false; btn.textContent = 'Start Trading';
   });
 
+  /* Show sign-in button immediately — init() will replace it if logged in */
+  renderNavGuest();
+
   /* Run */
-  init();
+  init().catch(() => renderNavGuest());
 
   /* ── Public API ────────────────────────────────────────── */
   window.BSAuth = {
