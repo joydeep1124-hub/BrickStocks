@@ -191,15 +191,83 @@ window.BSMarket = (function () {
     return { t, o, h, l, c, v, s: 'ok', _demo: true };
   }
 
+  const LOCAL_SYMBOLS = [
+    {symbol:'AAPL',  name:'Apple Inc.',              type:'stock',     description:'Apple Inc.'},
+    {symbol:'NVDA',  name:'NVIDIA Corp.',             type:'stock',     description:'NVIDIA Corp.'},
+    {symbol:'MSFT',  name:'Microsoft Corp.',          type:'stock',     description:'Microsoft Corp.'},
+    {symbol:'GOOGL', name:'Alphabet Inc.',            type:'stock',     description:'Alphabet Inc. (Google)'},
+    {symbol:'AMZN',  name:'Amazon.com Inc.',          type:'stock',     description:'Amazon.com Inc.'},
+    {symbol:'META',  name:'Meta Platforms',           type:'stock',     description:'Meta Platforms Inc.'},
+    {symbol:'TSLA',  name:'Tesla Inc.',               type:'stock',     description:'Tesla Inc.'},
+    {symbol:'JPM',   name:'JPMorgan Chase',           type:'stock',     description:'JPMorgan Chase & Co.'},
+    {symbol:'V',     name:'Visa Inc.',                type:'stock',     description:'Visa Inc.'},
+    {symbol:'NFLX',  name:'Netflix Inc.',             type:'stock',     description:'Netflix Inc.'},
+    {symbol:'AMD',   name:'Advanced Micro Devices',   type:'stock',     description:'AMD'},
+    {symbol:'COIN',  name:'Coinbase Global',          type:'stock',     description:'Coinbase Global Inc.'},
+    {symbol:'INTC',  name:'Intel Corp.',              type:'stock',     description:'Intel Corp.'},
+    {symbol:'DIS',   name:'The Walt Disney Co.',      type:'stock',     description:'Walt Disney Co.'},
+    {symbol:'PYPL',  name:'PayPal Holdings',          type:'stock',     description:'PayPal Holdings Inc.'},
+    {symbol:'BAC',   name:'Bank of America',          type:'stock',     description:'Bank of America Corp.'},
+    {symbol:'XOM',   name:'Exxon Mobil Corp.',        type:'stock',     description:'Exxon Mobil Corp.'},
+    {symbol:'WMT',   name:'Walmart Inc.',             type:'stock',     description:'Walmart Inc.'},
+    {symbol:'TSM',   name:'Taiwan Semiconductor',     type:'stock',     description:'Taiwan Semiconductor Mfg.'},
+    {symbol:'SSNLF', name:'Samsung Electronics',      type:'stock',     description:'Samsung Electronics (OTC)'},
+    {symbol:'BABA',  name:'Alibaba Group',            type:'stock',     description:'Alibaba Group Holding'},
+    {symbol:'BIDU',  name:'Baidu Inc.',               type:'stock',     description:'Baidu Inc.'},
+    {symbol:'TM',    name:'Toyota Motor Corp.',       type:'stock',     description:'Toyota Motor Corp.'},
+    {symbol:'SONY',  name:'Sony Group Corp.',         type:'stock',     description:'Sony Group Corp.'},
+    {symbol:'ASML',  name:'ASML Holding NV',          type:'stock',     description:'ASML Holding NV'},
+    {symbol:'SE',    name:'Sea Limited',              type:'stock',     description:'Sea Limited'},
+    {symbol:'TCEHY', name:'Tencent Holdings',         type:'stock',     description:'Tencent Holdings (OTC)'},
+    {symbol:'NVO',   name:'Novo Nordisk',             type:'stock',     description:'Novo Nordisk A/S'},
+    {symbol:'SAP',   name:'SAP SE',                   type:'stock',     description:'SAP SE'},
+    {symbol:'SHOP',  name:'Shopify Inc.',             type:'stock',     description:'Shopify Inc.'},
+    {symbol:'SPY',   name:'S&P 500 ETF',              type:'etf',       description:'SPDR S&P 500 ETF'},
+    {symbol:'QQQ',   name:'Nasdaq 100 ETF',           type:'etf',       description:'Invesco QQQ Trust'},
+    {symbol:'VTI',   name:'Vanguard Total Market',    type:'etf',       description:'Vanguard Total Stock Market ETF'},
+    {symbol:'GLD',   name:'Gold ETF',                 type:'etf',       description:'SPDR Gold Shares'},
+    {symbol:'BTC',   name:'Bitcoin',                  type:'crypto',    description:'Bitcoin'},
+    {symbol:'ETH',   name:'Ethereum',                 type:'crypto',    description:'Ethereum'},
+    {symbol:'SOL',   name:'Solana',                   type:'crypto',    description:'Solana'},
+    {symbol:'BNB',   name:'BNB',                      type:'crypto',    description:'BNB'},
+    {symbol:'XRP',   name:'XRP',                      type:'crypto',    description:'XRP'},
+    {symbol:'DOGE',  name:'Dogecoin',                 type:'crypto',    description:'Dogecoin'},
+    {symbol:'ADA',   name:'Cardano',                  type:'crypto',    description:'Cardano'},
+    {symbol:'AVAX',  name:'Avalanche',                type:'crypto',    description:'Avalanche'},
+    {symbol:'LINK',  name:'Chainlink',                type:'crypto',    description:'Chainlink'},
+    {symbol:'EURUSD',name:'Euro / US Dollar',         type:'forex',     description:'EUR/USD'},
+    {symbol:'GBPUSD',name:'British Pound / USD',      type:'forex',     description:'GBP/USD'},
+    {symbol:'USDJPY',name:'US Dollar / Japanese Yen', type:'forex',     description:'USD/JPY'},
+    {symbol:'AUDUSD',name:'Australian Dollar / USD',  type:'forex',     description:'AUD/USD'},
+    {symbol:'USDKRW',name:'US Dollar / Korean Won',   type:'forex',     description:'USD/KRW'},
+    {symbol:'GOLD',  name:'Gold Spot',                type:'commodity', description:'Gold Spot Price'},
+    {symbol:'OIL',   name:'Crude Oil WTI',            type:'commodity', description:'WTI Crude Oil'},
+    {symbol:'SILVER',name:'Silver Spot',              type:'commodity', description:'Silver Spot Price'},
+    {symbol:'COPPER',name:'Copper',                   type:'commodity', description:'Copper'},
+  ];
+
   async function searchSymbols(query, types = ['stock', 'etf', 'crypto']) {
+    const q = query.toUpperCase();
+
+    // Local search always works instantly
+    const localResults = LOCAL_SYMBOLS.filter(s =>
+      (types.includes('all') || types.includes(s.type)) &&
+      (s.symbol.includes(q) || s.name.toUpperCase().includes(q) || s.description.toUpperCase().includes(q))
+    ).slice(0, 8);
+
+    if (localResults.length >= 3) return localResults;
+
+    // Try backend for broader results
     try {
-      const r = await fetch(`${API()}/market/search?q=${encodeURIComponent(query)}&types=${types.join(',')}`);
+      const r = await fetch(`${API()}/market/search?q=${encodeURIComponent(query)}&types=${types.join(',')}`,
+        { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error(r.statusText);
-      return await r.json();
+      const backendResults = await r.json();
+      if (backendResults?.length) return backendResults;
     } catch (e) {
-      console.error('searchSymbols error:', e);
-      return [];
+      console.warn('searchSymbols backend failed, using local results');
     }
+    return localResults;
   }
 
   async function getNews(symbol = null, limit = 20) {
