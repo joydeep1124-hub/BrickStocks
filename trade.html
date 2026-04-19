@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trade · BrickStocks</title>
+<meta name="description" content="Buy and sell stocks, ETFs, crypto, forex and commodities with virtual money. Real prices, real charts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- TradingView Lightweight Charts -->
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+.trade-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px; align-items: start;
+  margin-top: 8px;
+}
+
+@media (max-width: 1024px) { .trade-layout { grid-template-columns: 1fr; } }
+
+/* Search bar */
+.symbol-search-bar {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 16px;
+}
+
+.symbol-search-wrap { position: relative; flex: 1; max-width: 420px; }
+
+.symbol-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); z-index: 100;
+  box-shadow: var(--shadow-lg); padding: 6px; max-height: 320px; overflow-y: auto;
+}
+
+.sym-result-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  transition: background 0.12s;
+}
+
+.sym-result-item:hover { background: rgba(255,255,255,0.05); }
+
+.sym-result-sym { font-family: var(--font-display); font-size: 13px; font-weight: 800; color: var(--text); }
+.sym-result-name { font-size: 11px; color: var(--text3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sym-result-type { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; }
+
+/* Symbol header */
+.symbol-header {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  margin-bottom: 16px;
+}
+
+.sh-top { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sh-left { flex: 1; min-width: 0; }
+
+.sh-sym { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text); }
+.sh-name { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+.sh-price {
+  font-family: var(--font-display); font-size: 34px;
+  font-weight: 800; letter-spacing: -1.5px; color: var(--text);
+  margin-top: 10px; transition: color 0.3s;
+}
+
+.sh-price.up { color: var(--up); }
+.sh-price.dn { color: var(--dn); }
+
+.sh-change {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+  margin-top: 4px;
+}
+
+.sh-right { text-align: right; }
+
+.sh-stat-grid {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.sh-stat-item { text-align: center; }
+.sh-stat-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text2); }
+.sh-stat-lbl { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Chart */
+.chart-wrap {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-controls {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+}
+
+.chart-res-btn {
+  padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; border: 1px solid var(--border); background: none;
+  color: var(--text3); font-family: var(--font-mono); transition: all 0.12s;
+}
+
+.chart-res-btn:hover { color: var(--text); border-color: var(--border2); }
+.chart-res-btn.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(34,211,238,0.3); }
+
+.chart-type-btn {
+  padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; border: 1px solid var(--border); background: none;
+  color: var(--text3); font-family: var(--font-mono); transition: all 0.12s;
+  margin-left: auto;
+}
+
+.chart-type-btn.active { background: var(--bg4); color: var(--text); }
+
+#main-chart { height: 340px; }
+
+/* Order panel */
+.order-panel {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  position: sticky; top: 76px;
+}
+
+.order-tabs { display: flex; gap: 0; margin-bottom: 20px; }
+
+.order-tab {
+  flex: 1; padding: 10px; text-align: center;
+  font-size: 14px; font-weight: 800; font-family: var(--font-display);
+  cursor: pointer; border: 1px solid var(--border); background: none;
+  color: var(--text3); transition: all 0.15s;
+}
+
+.order-tab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.order-tab:last-child  { border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
+
+.order-tab.buy  { background: var(--up);  color: #07090d; border-color: var(--up); }
+.order-tab.sell { background: var(--dn);  color: #fff;    border-color: var(--dn); }
+.order-tab:not(.buy):not(.sell):hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+/* Amount input */
+.order-qty-wrap {
+  display: flex; align-items: center; gap: 0;
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 12px;
+}
+
+.order-qty-btn {
+  width: 36px; height: 40px; background: none; border: none;
+  color: var(--text3); font-size: 18px; cursor: pointer;
+  transition: all 0.12s; flex-shrink: 0;
+}
+
+.order-qty-btn:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+.order-qty-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--font-mono); font-size: 16px; font-weight: 700;
+  color: var(--text); text-align: center; padding: 0;
+}
+
+/* Order type */
+.order-type-row {
+  display: flex; gap: 6px; margin-bottom: 12px;
+}
+
+.order-type-btn {
+  flex: 1; padding: 7px 0; border-radius: 7px; font-size: 11px; font-weight: 700;
+  cursor: pointer; border: 1px solid var(--border); background: none;
+  color: var(--text3); font-family: var(--font-mono); transition: all 0.12s;
+  text-align: center;
+}
+
+.order-type-btn.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(34,211,238,0.3); }
+
+/* Order summary */
+.order-summary {
+  background: var(--bg4); border-radius: var(--radius);
+  padding: 12px; margin-bottom: 16px;
+}
+
+.order-sum-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; font-family: var(--font-mono); padding: 3px 0;
+  color: var(--text2);
+}
+
+.order-sum-row.total {
+  font-weight: 700; color: var(--text);
+  border-top: 1px solid var(--border); margin-top: 6px; padding-top: 9px;
+  font-size: 14px;
+}
+
+/* Holdings mini */
+.holdings-mini {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+
+.holdings-mini-title {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+.holding-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.holding-row:last-child { border-bottom: none; }
+
+.holding-sym {
+  font-family: var(--font-display); font-size: 13px;
+  font-weight: 700; color: var(--text); width: 56px;
+}
+
+.holding-qty {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3); flex: 1;
+}
+
+.holding-pnl {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-align: right;
+}
+
+/* Limit price input */
+.limit-price-row {
+  margin-bottom: 12px;
+}
+
+/* News sidebar */
+.news-sidebar { margin-top: 16px; }
+
+.symbol-news-item {
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.symbol-news-item:last-child { border-bottom: none; }
+.symbol-news-head { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 4px; }
+.symbol-news-meta { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html" class="active"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap" style="padding-top: 72px;">
+
+  <div class="page-header" style="margin-bottom:16px;">
+    <h1 class="page-title">💹 Trade</h1>
+    <p class="page-sub">Real prices. Virtual money. Select any asset below to begin.</p>
+  </div>
+
+  <!-- Symbol search -->
+  <div class="symbol-search-bar">
+    <div class="symbol-search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="sym-search" placeholder="Search stock, crypto, forex… (e.g. AAPL, BTC)" autocomplete="off">
+      <div class="symbol-results" id="sym-results" style="display:none;"></div>
+    </div>
+
+    <!-- Asset filter pills -->
+    <div class="pill-group" id="type-pills">
+      <button class="pill active" data-type="all">All</button>
+      <button class="pill" data-type="stock">Stocks</button>
+      <button class="pill" data-type="etf">ETFs</button>
+      <button class="pill" data-type="crypto">Crypto</button>
+      <button class="pill" data-type="forex">Forex</button>
+      <button class="pill" data-type="commodity">Commodities</button>
+    </div>
+  </div>
+
+  <!-- Two column layout -->
+  <div class="trade-layout">
+
+    <!-- LEFT: Chart + info -->
+    <div>
+
+      <!-- Symbol header -->
+      <div class="symbol-header" id="symbol-header">
+        <div class="sh-top">
+          <div class="sh-left">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="sh-sym" id="sh-sym">AAPL</div>
+              <span class="badge badge-accent" id="sh-type">Stock</span>
+            </div>
+            <div class="sh-name" id="sh-name">Apple Inc.</div>
+            <div class="sh-price" id="sh-price">$189.84</div>
+            <div class="sh-change chg-up" id="sh-change">+$2.30 (+1.23%)</div>
+          </div>
+          <div class="sh-right">
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Exchange</div>
+            <div style="font-family:var(--font-display);font-size:14px;font-weight:700;" id="sh-exchange">NASDAQ</div>
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-top:4px;" id="sh-mktcap">Market Cap: $2.93T</div>
+          </div>
+        </div>
+        <div class="sh-stat-grid" id="sh-stats">
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-open">—</div><div class="sh-stat-lbl">Open</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-high">—</div><div class="sh-stat-lbl">High</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-low">—</div><div class="sh-stat-lbl">Low</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-52h">—</div><div class="sh-stat-lbl">52W High</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-52l">—</div><div class="sh-stat-lbl">52W Low</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-vol">—</div><div class="sh-stat-lbl">Volume</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-pe">—</div><div class="sh-stat-lbl">P/E Ratio</div></div>
+          <div class="sh-stat-item"><div class="sh-stat-val" id="st-eps">—</div><div class="sh-stat-lbl">EPS</div></div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-wrap">
+        <div class="chart-controls">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-right:6px;">Range:</div>
+          <button class="chart-res-btn" data-res="5"  data-from="1d">1D</button>
+          <button class="chart-res-btn" data-res="15" data-from="5d">5D</button>
+          <button class="chart-res-btn active" data-res="D" data-from="1m">1M</button>
+          <button class="chart-res-btn" data-res="D" data-from="3m">3M</button>
+          <button class="chart-res-btn" data-res="W" data-from="1y">1Y</button>
+          <button class="chart-res-btn" data-res="M" data-from="5y">5Y</button>
+          <div style="margin-left:auto;display:flex;gap:4px;">
+            <button class="chart-type-btn active" data-chart="candle">Candles</button>
+            <button class="chart-type-btn" data-chart="area">Area</button>
+          </div>
+        </div>
+        <div id="main-chart"></div>
+      </div>
+
+      <!-- About / Fundamentals -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">🏢 About <span id="about-sym">AAPL</span></div>
+        </div>
+        <div id="about-desc" style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">
+          Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide. The company offers iPhone, Mac, iPad, and Wearables, Home and Accessories products.
+        </div>
+        <div class="grid-4" id="fundamentals" style="gap:12px;">
+          <div class="stat-tile">
+            <div class="stat-tile-label">Revenue (TTM)</div>
+            <div class="stat-tile-val acc" id="fund-rev">—</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Net Income</div>
+            <div class="stat-tile-val acc" id="fund-ni">—</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Gross Margin</div>
+            <div class="stat-tile-val" id="fund-gm">—</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Dividend Yield</div>
+            <div class="stat-tile-val" id="fund-div">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Symbol news -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📰 Latest News</div>
+        </div>
+        <div id="symbol-news">
+          <div class="skeleton" style="height:50px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:50px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:50px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Order panel -->
+    <div>
+      <div class="order-panel" id="order-panel">
+
+        <!-- Buy / Sell tabs -->
+        <div class="order-tabs">
+          <button class="order-tab buy" id="tab-buy">Buy</button>
+          <button class="order-tab" id="tab-sell">Sell</button>
+        </div>
+
+        <!-- Current price display -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:12px;color:var(--text3);">Current Price</div>
+          <div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);" id="order-price">$189.84</div>
+        </div>
+
+        <!-- Order type -->
+        <div class="input-label" style="margin-bottom:6px;">Order Type</div>
+        <div class="order-type-row" style="margin-bottom:14px;">
+          <button class="order-type-btn active" data-otype="market">Market</button>
+          <button class="order-type-btn" data-otype="limit">Limit</button>
+          <button class="order-type-btn" data-otype="stop">Stop</button>
+        </div>
+
+        <!-- Limit price (hidden for market) -->
+        <div class="limit-price-row" id="limit-price-row" style="display:none;">
+          <label class="input-label">Limit Price</label>
+          <input class="input" id="limit-price-input" type="number" step="0.01" placeholder="0.00">
+        </div>
+
+        <!-- Quantity -->
+        <div class="input-label" style="margin-bottom:6px;">Shares / Units</div>
+        <div class="order-qty-wrap" style="margin-bottom:4px;">
+          <button class="order-qty-btn" id="qty-minus">−</button>
+          <input class="order-qty-input" id="order-qty" type="number" value="1" min="0.001" step="0.001">
+          <button class="order-qty-btn" id="qty-plus">+</button>
+        </div>
+
+        <!-- % preset buttons -->
+        <div style="display:flex;gap:4px;margin-bottom:14px;">
+          <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px;border:1px solid var(--border);" data-pct="25">25%</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px;border:1px solid var(--border);" data-pct="50">50%</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px;border:1px solid var(--border);" data-pct="75">75%</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px;border:1px solid var(--border);" data-pct="100">Max</button>
+        </div>
+
+        <!-- Summary -->
+        <div class="order-summary">
+          <div class="order-sum-row">
+            <span>Shares</span>
+            <span id="sum-qty">1</span>
+          </div>
+          <div class="order-sum-row">
+            <span>Price</span>
+            <span id="sum-price">$189.84</span>
+          </div>
+          <div class="order-sum-row">
+            <span>Fee</span>
+            <span style="color:var(--up);">$0.00 (Free)</span>
+          </div>
+          <div class="order-sum-row total">
+            <span>Total</span>
+            <span id="sum-total">$189.84</span>
+          </div>
+        </div>
+
+        <!-- Available balance -->
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:16px;">
+          <span style="color:var(--text3);">Available Cash</span>
+          <span style="font-family:var(--font-mono);font-weight:700;color:var(--up);" id="avail-cash">$10,000.00</span>
+        </div>
+
+        <!-- Execute button -->
+        <button class="btn btn-up" style="width:100%;font-size:15px;justify-content:center;padding:13px;"
+          id="execute-btn">Buy AAPL</button>
+
+        <!-- Watchlist button -->
+        <button id="wl-add-btn" onclick="toggleWatchlist()"
+          style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid var(--border);
+          background:var(--bg4);color:var(--text3);font-family:var(--font-display);font-size:13px;
+          font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;">
+          👁️ <span id="wl-btn-label">Add to Watchlist</span>
+        </button>
+
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.5;">
+          This is simulated trading with virtual money only.<br>
+          Real money is never at risk.
+        </div>
+
+        <!-- My Holdings in this symbol -->
+        <div class="holdings-mini" id="my-holding" style="display:none;">
+          <div class="holdings-mini-title">My Position</div>
+          <div id="my-holding-content"></div>
+        </div>
+
+      </div>
+
+      <!-- League selector (if in league) -->
+      <div class="card" style="margin-top:16px;" id="league-selector" style="display:none;">
+        <div class="card-header">
+          <div class="card-title">🏆 Trading In</div>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+          Choose where to place this trade:
+        </div>
+        <div id="league-mode-options">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg4);border-radius:9px;cursor:pointer;margin-bottom:8px;border:1px solid var(--border);">
+            <input type="radio" name="trade-mode" value="personal" checked>
+            <div>
+              <div style="font-weight:600;font-size:13px;color:var(--text);">Personal Portfolio</div>
+              <div style="font-size:11px;color:var(--text3);">Your main account</div>
+            </div>
+          </label>
+          <div id="league-options"></div>
+        </div>
+      </div>
+
+      <!-- AI Signal for this symbol -->
+      <div class="card" style="margin-top:16px;" id="sym-signal-card" style="display:none;">
+        <div class="card-header">
+          <div class="card-title">🤖 AI Signal</div>
+          <a href="/agent.html" class="section-link">Full analysis →</a>
+        </div>
+        <div id="sym-signal-content"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Trade confirmation modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <button class="modal-close" id="confirm-close">✕</button>
+    <div id="confirm-icon" style="font-size:36px;text-align:center;margin-bottom:12px;">💹</div>
+    <div class="modal-title" style="text-align:center;" id="confirm-title">Confirm Trade</div>
+    <div class="modal-sub" style="text-align:center;" id="confirm-sub">Review your order below</div>
+    <div style="background:var(--bg4);border-radius:12px;padding:16px;margin-bottom:20px;" id="confirm-details"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-up" style="flex:1;justify-content:center;font-size:15px;" id="confirm-ok">Execute Trade</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+// ─── State ────────────────────────────────────────────────────────
+let currentSymbol = { symbol: 'AAPL', type: 'stock', name: 'Apple Inc.', price: 189.84 };
+let currentAction = 'buy';
+let orderType     = 'market';
+let userProfile   = null;
+let chartInstance = null;
+let priceSeries   = null;
+let volumeSeries  = null;
+let chartMode     = 'candle';
+
+// ─── Parse URL params ─────────────────────────────────────────────
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('symbol')) {
+  currentSymbol.symbol = urlParams.get('symbol');
+  currentSymbol.type   = urlParams.get('type') || 'stock';
+}
+if (urlParams.get('action') === 'sell') currentAction = 'sell';
+
+// ─── Auth hook ────────────────────────────────────────────────────
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = (user, profile) => {
+  userProfile = profile;
+  updateCashDisplay();
+  loadMyHolding();
+  loadLeagueOptions();
+};
+
+// ─── Init chart ───────────────────────────────────────────────────
+function initChart() {
+  const container = document.getElementById('main-chart');
+  chartInstance = LightweightCharts.createChart(container, {
+    width:  container.clientWidth,
+    height: 340,
+    layout: { background: { color: 'transparent' }, textColor: '#8b949e' },
+    grid: {
+      vertLines:   { color: 'rgba(255,255,255,0.04)' },
+      horzLines:   { color: 'rgba(255,255,255,0.04)' },
+    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
+    timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true },
+  });
+
+  if (chartMode === 'candle') {
+    priceSeries = chartInstance.addCandlestickSeries({
+      upColor: '#22c55e', downColor: '#ef4444',
+      borderUpColor: '#22c55e', borderDownColor: '#ef4444',
+      wickUpColor: '#22c55e', wickDownColor: '#ef4444',
+    });
+  } else {
+    priceSeries = chartInstance.addAreaSeries({
+      lineColor: '#22d3ee', topColor: 'rgba(34,211,238,0.18)',
+      bottomColor: 'rgba(34,211,238,0)', lineWidth: 2,
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    chartInstance?.applyOptions({ width: container.clientWidth });
+  });
+}
+
+async function loadChart(resolution = 'D', from = null) {
+  if (!priceSeries) return;
+  const now = Math.floor(Date.now() / 1000);
+  let fromTs;
+  switch (from) {
+    case '1d': fromTs = now - 86400;          break;
+    case '5d': fromTs = now - 5 * 86400;      break;
+    case '1m': fromTs = now - 30 * 86400;     break;
+    case '3m': fromTs = now - 90 * 86400;     break;
+    case '1y': fromTs = now - 365 * 86400;    break;
+    case '5y': fromTs = now - 5 * 365 * 86400;break;
+    default:   fromTs = now - 30 * 86400;
+  }
+
+  const candles = await BSMarket.getCandles(currentSymbol.symbol, resolution, fromTs, now, currentSymbol.type);
+  if (!candles) return;
+  const data = BSMarket.buildChartData(candles);
+  if (!data.length) return;
+
+  if (chartMode === 'candle') {
+    priceSeries.setData(data);
+  } else {
+    priceSeries.setData(data.map(d => ({ time: d.time, value: d.close })));
+  }
+  chartInstance.timeScale().fitContent();
+}
+
+// ─── Load quote ───────────────────────────────────────────────────
+async function loadQuote(symbol, type) {
+  const quote = await BSMarket.getQuote(symbol, type);
+  if (!quote) return;
+
+  const price = quote.c || quote.price || 0;
+  const prev  = quote.pc || (price - (quote.d || 0));
+  const diff  = price - prev;
+  const pct   = quote.dp || ((diff / prev) * 100);
+
+  currentSymbol.price = price;
+
+  document.getElementById('sh-price').textContent  = BSMarket.fmtPrice(price, type === 'forex' ? 4 : 2);
+  const chgEl = document.getElementById('sh-change');
+  chgEl.textContent = `${diff >= 0 ? '+' : ''}${BSMarket.fmtPrice(Math.abs(diff), 2)} (${diff >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+  chgEl.className = `sh-change ${diff >= 0 ? 'chg-up' : 'chg-dn'}`;
+
+  document.getElementById('sh-price').classList.toggle('up', diff >= 0);
+  document.getElementById('sh-price').classList.toggle('dn', diff < 0);
+
+  // Stats
+  document.getElementById('st-open').textContent = BSMarket.fmtPrice(quote.o, 2);
+  document.getElementById('st-high').textContent = BSMarket.fmtPrice(quote.h, 2);
+  document.getElementById('st-low').textContent  = BSMarket.fmtPrice(quote.l, 2);
+  document.getElementById('st-52h').textContent  = BSMarket.fmtPrice(quote.h52 || quote['52WeekHigh'], 2);
+  document.getElementById('st-52l').textContent  = BSMarket.fmtPrice(quote.l52 || quote['52WeekLow'], 2);
+  document.getElementById('st-vol').textContent  = BSMarket.fmtVol(quote.v);
+  document.getElementById('st-pe').textContent   = quote.pe ? quote.pe.toFixed(1) : '—';
+  document.getElementById('st-eps').textContent  = quote.eps ? '$' + quote.eps.toFixed(2) : '—';
+
+  if (quote.mc)      document.getElementById('sh-mktcap').textContent = 'Market Cap: ' + BSMarket.fmtMktCap(quote.mc);
+  if (quote.exchange) document.getElementById('sh-exchange').textContent = quote.exchange;
+
+  // Fundamentals
+  if (quote.revenue)     document.getElementById('fund-rev').textContent = BSMarket.fmtMktCap(quote.revenue);
+  if (quote.netIncome)   document.getElementById('fund-ni').textContent  = BSMarket.fmtMktCap(quote.netIncome);
+  if (quote.grossMargin) document.getElementById('fund-gm').textContent  = (quote.grossMargin * 100).toFixed(1) + '%';
+  if (quote.divYield)    document.getElementById('fund-div').textContent = (quote.divYield * 100).toFixed(2) + '%';
+
+  // Update order panel
+  updateOrderPanel();
+}
+
+function updateOrderPanel() {
+  const price = currentSymbol.price;
+  document.getElementById('order-price').textContent = BSMarket.fmtPrice(price, currentSymbol.type === 'forex' ? 4 : 2);
+  document.getElementById('sum-price').textContent   = BSMarket.fmtPrice(price, 2);
+  const qty = parseFloat(document.getElementById('order-qty').value) || 1;
+  document.getElementById('sum-qty').textContent   = qty;
+  document.getElementById('sum-total').textContent = BSMarket.fmtPrice(qty * price);
+  document.getElementById('execute-btn').textContent = `${currentAction === 'buy' ? 'Buy' : 'Sell'} ${currentSymbol.symbol}`;
+}
+
+// ─── Load symbol ──────────────────────────────────────────────────
+async function loadSymbol(symbol, type, name = '') {
+  currentSymbol = { symbol, type, name };
+  document.getElementById('sh-sym').textContent   = symbol;
+  document.getElementById('about-sym').textContent = symbol;
+  document.getElementById('sh-type').textContent  = BSMarket.assetLabel(type);
+  document.getElementById('sh-name').textContent  = name;
+  document.getElementById('sh-price').textContent = 'Loading…';
+
+  // Reset chart
+  if (chartInstance) { chartInstance.remove(); chartInstance = null; priceSeries = null; }
+  initChart();
+
+  await Promise.all([
+    loadQuote(symbol, type),
+    loadChart('D', '1m'),
+    loadSymbolNews(symbol),
+    loadSymbolSignal(symbol),
+  ]);
+
+  // Update URL
+  const url = new URL(window.location);
+  url.searchParams.set('symbol', symbol);
+  url.searchParams.set('type', type);
+  history.replaceState({}, '', url);
+
+  loadMyHolding();
+}
+
+// ─── Load news for symbol ─────────────────────────────────────────
+async function loadSymbolNews(symbol) {
+  const el = document.getElementById('symbol-news');
+  try {
+    const news = await BSMarket.getNews(symbol, 5);
+    if (!news.length) throw new Error('empty');
+    el.innerHTML = news.map(n => `
+      <div class="symbol-news-item" onclick="window.open('${n.url}','_blank')">
+        <div class="symbol-news-head">${n.headline}</div>
+        <div class="symbol-news-meta">${n.source} · ${timeAgo(n.datetime || n.published_at)}</div>
+      </div>`).join('');
+  } catch {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px 0;">No recent news for ${symbol}.</div>`;
+  }
+}
+
+// ─── Load AI signal ───────────────────────────────────────────────
+async function loadSymbolSignal(symbol) {
+  const card = document.getElementById('sym-signal-card');
+  const el   = document.getElementById('sym-signal-content');
+  try {
+    const { data } = await _db.from('agent_signals').select('*')
+      .eq('symbol', symbol).order('created_at', { ascending: false }).limit(1).single();
+    if (!data) throw new Error('none');
+    card.style.display = '';
+    const typeColor = { buy:'var(--up)', sell:'var(--dn)', hold:'var(--gold)', watch:'var(--accent)' };
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="font-size:24px;">${ {buy:'🟢',sell:'🔴',hold:'🟡',watch:'👁️'}[data.signal_type] }</div>
+        <div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:${typeColor[data.signal_type]};">
+            ${data.signal_type?.toUpperCase()}
+          </div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+            Confidence: ${data.confidence?.toFixed(0)}%
+          </div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:12px;">
+        <div style="height:100%;width:${data.confidence}%;background:${typeColor[data.signal_type]};border-radius:2px;"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;">${data.reasoning || 'Analysis pending.'}</div>
+      ${data.target_price ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--up);">🎯 Target: ${BSMarket.fmtPrice(data.target_price)}</div>` : ''}
+      ${data.stop_loss ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--dn);">🛑 Stop: ${BSMarket.fmtPrice(data.stop_loss)}</div>` : ''}`;
+  } catch {
+    card.style.display = 'none';
+  }
+}
+
+// ─── My holding ───────────────────────────────────────────────────
+async function loadMyHolding() {
+  if (!window.BSAuth?.getUser()) return;
+  const holdingEl = document.getElementById('my-holding');
+  const contentEl = document.getElementById('my-holding-content');
+  try {
+    const { data } = await _db.from('holdings')
+      .select('*').eq('user_id', BSAuth.getUser().id).eq('symbol', currentSymbol.symbol).maybeSingle();
+    if (!data) { holdingEl.style.display = 'none'; return; }
+    holdingEl.style.display = '';
+    const pnl = (currentSymbol.price - data.avg_cost) * data.quantity;
+    const pnlPct = ((currentSymbol.price - data.avg_cost) / data.avg_cost) * 100;
+    contentEl.innerHTML = `
+      <div class="holding-row">
+        <div class="holding-sym">${data.symbol}</div>
+        <div class="holding-qty">${data.quantity} shares @ ${BSMarket.fmtPrice(data.avg_cost)}</div>
+        <div class="holding-pnl ${pnl >= 0 ? 'chg-up' : 'chg-dn'}">
+          ${pnl >= 0 ? '+' : ''}${BSMarket.fmtPrice(Math.abs(pnl))} (${pnlPct.toFixed(2)}%)
+        </div>
+      </div>`;
+  } catch {
+    holdingEl.style.display = 'none';
+  }
+}
+
+// ─── League options ───────────────────────────────────────────────
+async function loadLeagueOptions() {
+  if (!window.BSAuth?.getUser()) return;
+  const { data: memberships } = await _db.from('league_members')
+    .select('league_id, leagues(id, name, status, end_date, current_cash)')
+    .eq('user_id', BSAuth.getUser().id);
+  const active = memberships?.filter(m => m.leagues?.status === 'active') || [];
+  if (active.length) {
+    document.getElementById('league-selector').style.display = '';
+    document.getElementById('league-options').innerHTML = active.map(m => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg4);
+        border-radius:9px;cursor:pointer;border:1px solid rgba(34,211,238,0.15);">
+        <input type="radio" name="trade-mode" value="league:${m.league_id}">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--text);">🏆 ${m.leagues.name}</div>
+          <div style="font-size:11px;color:var(--text3);">Cash: ${BSMarket.fmtPrice(m.leagues.current_cash || 0)}</div>
+        </div>
+      </label>`).join('');
+  }
+}
+
+// ─── Cash display ─────────────────────────────────────────────────
+function updateCashDisplay() {
+  const cash = userProfile?.portfolio_cash || 0;
+  document.getElementById('avail-cash').textContent = BSMarket.fmtPrice(cash);
+}
+
+// ─── Buy/Sell tabs ────────────────────────────────────────────────
+document.getElementById('tab-buy').addEventListener('click', () => {
+  currentAction = 'buy';
+  document.getElementById('tab-buy').classList.add('buy');
+  document.getElementById('tab-sell').classList.remove('sell');
+  document.getElementById('execute-btn').className = 'btn btn-up';
+  document.getElementById('execute-btn').style.width = '100%';
+  document.getElementById('execute-btn').style.justifyContent = 'center';
+  document.getElementById('execute-btn').style.fontSize = '15px';
+  document.getElementById('execute-btn').style.padding = '13px';
+  updateOrderPanel();
+});
+
+document.getElementById('tab-sell').addEventListener('click', () => {
+  currentAction = 'sell';
+  document.getElementById('tab-sell').classList.add('sell');
+  document.getElementById('tab-buy').classList.remove('buy');
+  document.getElementById('execute-btn').className = 'btn btn-dn';
+  document.getElementById('execute-btn').style.width = '100%';
+  document.getElementById('execute-btn').style.justifyContent = 'center';
+  document.getElementById('execute-btn').style.fontSize = '15px';
+  document.getElementById('execute-btn').style.padding = '13px';
+  updateOrderPanel();
+});
+
+// ─── Order type ───────────────────────────────────────────────────
+document.querySelectorAll('.order-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.order-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    orderType = btn.dataset.otype;
+    document.getElementById('limit-price-row').style.display = orderType !== 'market' ? '' : 'none';
+  });
+});
+
+// ─── Qty controls ─────────────────────────────────────────────────
+document.getElementById('qty-minus').addEventListener('click', () => {
+  const input = document.getElementById('order-qty');
+  const step  = currentSymbol.type === 'crypto' ? 0.001 : 1;
+  input.value = Math.max(step, parseFloat(input.value) - step).toFixed(currentSymbol.type === 'crypto' ? 3 : 0);
+  updateOrderPanel();
+});
+
+document.getElementById('qty-plus').addEventListener('click', () => {
+  const input = document.getElementById('order-qty');
+  const step  = currentSymbol.type === 'crypto' ? 0.001 : 1;
+  input.value = (parseFloat(input.value) + step).toFixed(currentSymbol.type === 'crypto' ? 3 : 0);
+  updateOrderPanel();
+});
+
+document.getElementById('order-qty').addEventListener('input', updateOrderPanel);
+
+// ─── % preset buttons ─────────────────────────────────────────────
+document.querySelectorAll('[data-pct]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pct  = parseInt(btn.dataset.pct) / 100;
+    const cash = userProfile?.portfolio_cash || 0;
+    const price = currentSymbol.price || 1;
+    const maxShares = cash / price;
+    document.getElementById('order-qty').value = (maxShares * pct).toFixed(
+      currentSymbol.type === 'crypto' ? 3 : 0
+    );
+    updateOrderPanel();
+  });
+});
+
+// ─── Chart range buttons ──────────────────────────────────────────
+document.querySelectorAll('.chart-res-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chart-res-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadChart(btn.dataset.res, btn.dataset.from);
+  });
+});
+
+// ─── Chart type buttons ───────────────────────────────────────────
+document.querySelectorAll('.chart-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    chartMode = btn.dataset.chart;
+    if (chartInstance) { chartInstance.remove(); chartInstance = null; priceSeries = null; }
+    initChart();
+    const activeRes = document.querySelector('.chart-res-btn.active');
+    loadChart(activeRes?.dataset.res || 'D', activeRes?.dataset.from || '1m');
+  });
+});
+
+// ─── Symbol search ────────────────────────────────────────────────
+let searchDebounce;
+document.getElementById('sym-search').addEventListener('input', async (e) => {
+  clearTimeout(searchDebounce);
+  const q = e.target.value.trim();
+  const resEl = document.getElementById('sym-results');
+  if (q.length < 2) { resEl.style.display = 'none'; return; }
+  searchDebounce = setTimeout(async () => {
+    resEl.style.display = '';
+    resEl.innerHTML = '<div class="sym-result-item" style="pointer-events:none;color:var(--text3);font-size:12px;">Searching…</div>';
+    const activeType = document.querySelector('.pill.active')?.dataset.type || 'all';
+    const types = activeType === 'all' ? ['stock','etf','crypto','forex','commodity'] : [activeType];
+    const results = await BSMarket.searchSymbols(q, types);
+    if (!results.length) {
+      resEl.innerHTML = '<div class="sym-result-item" style="pointer-events:none;color:var(--text3);font-size:12px;">No results found</div>';
+      return;
+    }
+    resEl.innerHTML = results.slice(0, 8).map(r => `
+      <div class="sym-result-item" onclick="selectSymbol('${r.symbol}','${r.type}','${(r.description||r.name||'').replace(/'/g,'\\'')}')">
+        <span class="sym-result-sym">${r.symbol}</span>
+        <span class="sym-result-name">${r.description || r.name || ''}</span>
+        <span class="sym-result-type">${BSMarket.assetIcon(r.type)} ${r.type}</span>
+      </div>`).join('');
+  }, 300);
+});
+
+document.getElementById('sym-search').addEventListener('focus', (e) => {
+  if (e.target.value.length >= 2) document.getElementById('sym-results').style.display = '';
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.symbol-search-wrap')) {
+    document.getElementById('sym-results').style.display = 'none';
+  }
+});
+
+function selectSymbol(symbol, type, name) {
+  document.getElementById('sym-results').style.display = 'none';
+  document.getElementById('sym-search').value = '';
+  loadSymbol(symbol, type, name);
+}
+
+// ─── Execute trade ────────────────────────────────────────────────
+document.getElementById('execute-btn').addEventListener('click', () => {
+  if (!window.BSAuth?.getUser()) {
+    window.BSAuth?.open();
+    return;
+  }
+  const qty   = parseFloat(document.getElementById('order-qty').value);
+  const price = currentSymbol.price;
+  if (!qty || qty <= 0) { BSAuth.toast('Enter a valid quantity.', 'error'); return; }
+
+  const total = qty * price;
+  const cash  = userProfile?.portfolio_cash || 0;
+  if (currentAction === 'buy' && total > cash) {
+    BSAuth.toast('Insufficient funds. Add more or reduce quantity.', 'error');
+    return;
+  }
+
+  // Show confirm modal
+  document.getElementById('confirm-icon').textContent = currentAction === 'buy' ? '🟢' : '🔴';
+  document.getElementById('confirm-title').textContent = `Confirm ${currentAction === 'buy' ? 'Buy' : 'Sell'} Order`;
+  document.getElementById('confirm-sub').textContent = `${currentSymbol.symbol} — ${BSMarket.assetLabel(currentSymbol.type)}`;
+  document.getElementById('confirm-details').innerHTML = `
+    <div class="order-sum-row"><span>Action</span><span style="font-weight:700;color:${currentAction==='buy'?'var(--up)':'var(--dn)'};">${currentAction.toUpperCase()}</span></div>
+    <div class="order-sum-row"><span>Symbol</span><span>${currentSymbol.symbol}</span></div>
+    <div class="order-sum-row"><span>Shares</span><span>${qty}</span></div>
+    <div class="order-sum-row"><span>Price</span><span>${BSMarket.fmtPrice(price, 2)}</span></div>
+    <div class="order-sum-row total"><span>Total</span><span>${BSMarket.fmtPrice(total)}</span></div>`;
+  document.getElementById('confirm-ok').textContent = `${currentAction === 'buy' ? 'Buy' : 'Sell'} ${currentSymbol.symbol}`;
+  document.getElementById('confirm-ok').className = `btn ${currentAction === 'buy' ? 'btn-up' : 'btn-dn'}`;
+  document.getElementById('confirm-ok').style.flex = '1';
+  document.getElementById('confirm-ok').style.justifyContent = 'center';
+  document.getElementById('confirm-ok').style.fontSize = '15px';
+
+  const modal = document.getElementById('confirm-modal');
+  modal.classList.add('visible');
+  requestAnimationFrame(() => modal.classList.add('open'));
+});
+
+document.getElementById('confirm-close').addEventListener('click', closeConfirm);
+document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+document.getElementById('confirm-modal').addEventListener('click', e => { if (e.target === document.getElementById('confirm-modal')) closeConfirm(); });
+
+function closeConfirm() {
+  const modal = document.getElementById('confirm-modal');
+  modal.classList.remove('open');
+  modal.addEventListener('transitionend', () => modal.classList.remove('visible'), { once: true });
+}
+
+document.getElementById('confirm-ok').addEventListener('click', async () => {
+  const btn = document.getElementById('confirm-ok');
+  btn.disabled = true; btn.textContent = 'Executing…';
+
+  const qty    = parseFloat(document.getElementById('order-qty').value);
+  const price  = currentSymbol.price;
+  const userId = BSAuth.getUser()?.id;
+
+  // Check league mode
+  let leagueId = null;
+  const selectedMode = document.querySelector('input[name="trade-mode"]:checked')?.value;
+  if (selectedMode && selectedMode.startsWith('league:')) leagueId = selectedMode.replace('league:', '');
+
+  const result = await BSMarket.executeTrade({
+    userId, symbol: currentSymbol.symbol, assetType: currentSymbol.type,
+    action: currentAction, quantity: qty, price, leagueId
+  });
+
+  btn.disabled = false;
+  closeConfirm();
+
+  if (result.ok) {
+    BSAuth.toast(`${currentAction === 'buy' ? '✅ Bought' : '✅ Sold'} ${qty} ${currentSymbol.symbol} @ ${BSMarket.fmtPrice(price)}`, 'success');
+    userProfile = await BSAuth.refreshProfile();
+    updateCashDisplay();
+    loadMyHolding();
+  } else {
+    BSAuth.toast(result.error || 'Trade failed.', 'error');
+  }
+});
+
+// ─── Utility ──────────────────────────────────────────────────────
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = (Date.now() - new Date(typeof ts === 'number' ? ts * 1000 : ts).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+// ─── Watchlist integration ─────────────────────────────────────
+const WL_KEY = 'bs_watchlist_v2';
+
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem(WL_KEY)) || []; } catch { return []; }
+}
+function saveWatchlist(wl) { localStorage.setItem(WL_KEY, JSON.stringify(wl)); }
+
+function updateWlBtn(symbol) {
+  const btn   = document.getElementById('wl-add-btn');
+  const label = document.getElementById('wl-btn-label');
+  if (!btn || !label) return;
+  const isWatched = getWatchlist().some(w => w.symbol === symbol);
+  if (isWatched) {
+    btn.style.color   = 'var(--accent)';
+    btn.style.borderColor = 'rgba(34,211,238,.3)';
+    btn.style.background  = 'var(--accent-dim)';
+    label.textContent = 'Watching ✓';
+  } else {
+    btn.style.color       = 'var(--text3)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background  = 'var(--bg4)';
+    label.textContent = 'Add to Watchlist';
+  }
+}
+
+function toggleWatchlist() {
+  const sym  = currentSymbol?.symbol;
+  const type = currentSymbol?.type || 'stock';
+  if (!sym) return;
+  let wl = getWatchlist();
+  const idx = wl.findIndex(w => w.symbol === sym);
+  if (idx >= 0) {
+    wl.splice(idx, 1);
+    saveWatchlist(wl);
+    updateWlBtn(sym);
+    if (window.BSAuth?.toast) BSAuth.toast(`${sym} removed from watchlist`, 'info');
+  } else {
+    if (wl.length >= 30) { if (window.BSAuth?.toast) BSAuth.toast('Watchlist limit is 30 assets','warning'); return; }
+    const NAMES = {
+      AAPL:'Apple Inc.',NVDA:'NVIDIA Corp.',MSFT:'Microsoft Corp.',GOOGL:'Alphabet Inc.',
+      AMZN:'Amazon.com Inc.',META:'Meta Platforms Inc.',TSLA:'Tesla Inc.',JPM:'JPMorgan Chase',
+      BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',DOGE:'Dogecoin',
+      EURUSD:'Euro / USD',GBPUSD:'GBP / USD',USDJPY:'USD / JPY',
+    };
+    wl.push({ symbol: sym, name: NAMES[sym] || sym, type, addedAt: Date.now() });
+    saveWatchlist(wl);
+    updateWlBtn(sym);
+    if (window.BSAuth?.toast) BSAuth.toast(`👁️ ${sym} added to watchlist`, 'success');
+  }
+}
+
+// Update wl button whenever a new symbol loads
+const _origLoadSymbol = loadSymbol;
+window.loadSymbol = function(sym, type) {
+  _origLoadSymbol(sym, type);
+  setTimeout(() => updateWlBtn(sym), 0);
+};
+
+// ─── Boot ─────────────────────────────────────────────────────────
+initChart();
+loadSymbol(currentSymbol.symbol, currentSymbol.type);
+updateWlBtn(currentSymbol.symbol);
+if (currentAction === 'sell') document.getElementById('tab-sell').click();
+
+// Auto-refresh price every 30s
+setInterval(async () => {
+  if (document.hidden) return;
+  await loadQuote(currentSymbol.symbol, currentSymbol.type);
+}, 30000);
+</script>
+</body>
+</html>

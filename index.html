@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BrickStocks — Paper Trade Stocks, Crypto & Forex. Compete. Learn.</title>
+<meta name="description" content="Trade stocks, crypto, forex and commodities with $10,000 virtual money. Compete with friends in 2-week leagues. AI-powered trade suggestions. Real market data.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BrickStocks">
+<meta property="og:title" content="BrickStocks — Paper Trade & Compete">
+<meta property="og:description" content="Real market data. Fake money. Real competition. Trade stocks, crypto, forex and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── Index-specific styles ─────────────────────────── */
+.hero {
+  padding: 80px 0 64px;
+  text-align: center; position: relative; z-index: 1;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.2);
+  border-radius: 20px; padding: 5px 14px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--accent); margin-bottom: 20px; letter-spacing: 0.04em;
+}
+
+.hero-title {
+  font-family: var(--font-display); font-size: clamp(36px, 5vw, 64px);
+  font-weight: 800; letter-spacing: -2px; color: var(--text);
+  line-height: 1.1; margin-bottom: 18px;
+}
+
+.hero-title .hl {
+  color: var(--accent);
+  background: linear-gradient(90deg, var(--accent), #38bdf8);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: 17px; color: var(--text2); max-width: 580px;
+  margin: 0 auto 32px; line-height: 1.7;
+}
+
+.hero-ctas {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-cta-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); color: #07090d;
+  font-family: var(--font-display); font-weight: 800; font-size: 15px;
+  padding: 13px 28px; border-radius: 12px; text-decoration: none;
+  transition: all 0.2s; letter-spacing: 0.2px;
+  box-shadow: 0 0 24px rgba(34,211,238,0.25);
+}
+
+.hero-cta-primary:hover {
+  background: var(--accent2); transform: translateY(-2px);
+  box-shadow: 0 0 32px rgba(34,211,238,0.35);
+}
+
+.hero-cta-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: none; color: var(--text2);
+  font-family: var(--font-display); font-weight: 700; font-size: 15px;
+  padding: 13px 24px; border-radius: 12px; text-decoration: none;
+  border: 1px solid var(--border2); transition: all 0.2s;
+}
+
+.hero-cta-secondary:hover {
+  color: var(--text); border-color: var(--border3);
+  background: rgba(255,255,255,0.04);
+}
+
+.hero-stats {
+  display: flex; align-items: center; justify-content: center; gap: 32px;
+  margin-top: 40px; flex-wrap: wrap;
+}
+
+.hero-stat {
+  text-align: center;
+}
+
+.hero-stat-val {
+  font-family: var(--font-display); font-size: 26px;
+  font-weight: 800; letter-spacing: -1px; color: var(--text);
+}
+
+.hero-stat-label {
+  font-size: 12px; color: var(--text3); font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.hero-divider {
+  width: 1px; height: 40px; background: var(--border);
+}
+
+/* ── Market overview strip ─────────────────────────── */
+.market-strip-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+
+.market-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px;
+}
+
+.market-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+  cursor: pointer; text-decoration: none; color: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  display: block;
+}
+
+.market-card:hover {
+  border-color: rgba(34,211,238,0.25);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+
+.mc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mc-sym {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 800; color: var(--text);
+}
+
+.mc-type {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  color: var(--text3); padding: 2px 6px;
+  background: rgba(255,255,255,0.05); border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.mc-name {
+  font-size: 11px; color: var(--text3); margin-bottom: 10px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.mc-price {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 800; letter-spacing: -0.5px; color: var(--text);
+  margin-bottom: 4px;
+}
+
+.mc-chg {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+}
+
+/* ── Mini sparkline ────────────────────────────────── */
+.mini-chart-wrap { height: 40px; margin-top: 10px; }
+
+/* ── Feature cards ─────────────────────────────────── */
+.features-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.feature-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 24px;
+  transition: border-color 0.2s;
+}
+
+.feature-card:hover { border-color: var(--border2); }
+
+.feature-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 16px;
+}
+
+.fi-cyan   { background: var(--accent-dim); }
+.fi-green  { background: var(--up-dim); }
+.fi-purple { background: var(--purple-dim); }
+.fi-gold   { background: var(--gold-dim); }
+.fi-blue   { background: var(--blue-dim); }
+.fi-red    { background: var(--dn-dim); }
+
+.feature-title {
+  font-family: var(--font-display); font-size: 16px;
+  font-weight: 800; color: var(--text); margin-bottom: 6px;
+}
+
+.feature-desc {
+  font-size: 13px; color: var(--text2); line-height: 1.6;
+}
+
+/* ── League preview ────────────────────────────────── */
+.league-banner {
+  background: linear-gradient(135deg, rgba(34,211,238,0.06), rgba(59,130,246,0.06));
+  border: 1px solid rgba(34,211,238,0.2); border-radius: var(--radius-xl);
+  padding: 28px; display: flex; align-items: center; gap: 24px;
+  transition: border-color 0.2s; cursor: pointer; text-decoration: none;
+  color: inherit;
+}
+
+.league-banner:hover { border-color: rgba(34,211,238,0.4); }
+
+.league-banner-icon { font-size: 52px; flex-shrink: 0; }
+
+.league-banner-info { flex: 1; min-width: 0; }
+
+.league-banner-title {
+  font-family: var(--font-display); font-size: 22px;
+  font-weight: 800; letter-spacing: -0.5px; color: var(--text);
+  margin-bottom: 6px;
+}
+
+.league-banner-sub { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+
+.league-banner-meta {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+
+.lbm-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text3);
+}
+
+.lbm-item .lbm-val { color: var(--accent); font-size: 13px; }
+
+.league-banner-cta {
+  background: var(--accent); color: #07090d;
+  font-family: var(--font-display); font-weight: 800; font-size: 14px;
+  padding: 10px 22px; border-radius: 10px; white-space: nowrap;
+  border: none; cursor: pointer; flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.league-banner-cta:hover { background: var(--accent2); }
+
+/* ── Top traders ───────────────────────────────────── */
+.trader-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--bg3); border: 1px solid var(--border);
+  margin-bottom: 8px; text-decoration: none; color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.trader-row:hover {
+  border-color: var(--border2); background: rgba(255,255,255,0.02);
+}
+
+.trader-rank {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 800; color: var(--text3); width: 28px; text-align: center;
+}
+
+.trader-rank.r1 { color: var(--gold); font-size: 22px; }
+.trader-rank.r2 { color: #94a3b8; font-size: 20px; }
+.trader-rank.r3 { color: #a97c50; font-size: 19px; }
+
+.trader-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 12px; font-weight: 700;
+  color: var(--accent); flex-shrink: 0;
+}
+
+.trader-info { flex: 1; min-width: 0; }
+.trader-name { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); }
+.trader-handle { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+
+.trader-gain {
+  font-family: var(--font-display); font-size: 16px;
+  font-weight: 800; text-align: right;
+}
+
+/* ── Asset tabs ────────────────────────────────────── */
+.asset-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+}
+
+.asset-tab {
+  padding: 6px 16px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text3); font-family: var(--font-mono);
+  transition: all 0.15s;
+}
+
+.asset-tab.active {
+  background: var(--accent); color: #07090d; border-color: var(--accent);
+}
+
+.asset-tab:hover:not(.active) {
+  color: var(--text); border-color: var(--border2);
+}
+
+/* ── News feed ─────────────────────────────────────── */
+.news-item {
+  display: flex; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+  text-decoration: none; color: inherit; transition: opacity 0.15s;
+}
+
+.news-item:hover { opacity: 0.8; }
+.news-item:last-child { border-bottom: none; }
+
+.news-thumb {
+  width: 64px; height: 48px; border-radius: 8px;
+  background: var(--bg4); flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.news-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.news-info { flex: 1; min-width: 0; }
+
+.news-headline {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  line-height: 1.4; margin-bottom: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-meta {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.news-sentiment {
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; font-family: var(--font-mono);
+}
+
+.ns-positive { background: var(--up-dim); color: var(--up); }
+.ns-negative { background: var(--dn-dim); color: var(--dn); }
+.ns-neutral  { background: rgba(255,255,255,0.05); color: var(--text3); }
+
+/* ── Two-col layout ────────────────────────────────── */
+.home-cols {
+  display: grid; grid-template-columns: 1fr 380px; gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .home-cols { grid-template-columns: 1fr; }
+}
+
+/* ── Scroll reveal ─────────────────────────────────── */
+.reveal {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<!-- LIVE TICKER -->
+<div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <span class="ticker-item"><span class="t-sym">AAPL</span><span class="t-up">$189.84</span><span class="t-up">+1.23%</span></span>
+    <span class="ticker-item"><span class="t-sym">TSLA</span><span class="t-dn">$248.12</span><span class="t-dn">-0.87%</span></span>
+    <span class="ticker-item"><span class="t-sym">NVDA</span><span class="t-up">$875.40</span><span class="t-up">+2.14%</span></span>
+    <span class="ticker-item"><span class="t-sym">BTC</span><span class="t-up">$67,430</span><span class="t-up">+3.20%</span></span>
+    <span class="ticker-item"><span class="t-sym">ETH</span><span class="t-dn">$3,512</span><span class="t-dn">-0.45%</span></span>
+    <span class="ticker-item"><span class="t-sym">SPY</span><span class="t-up">$519.22</span><span class="t-up">+0.61%</span></span>
+    <span class="ticker-item"><span class="t-sym">AMZN</span><span class="t-up">$182.40</span><span class="t-up">+0.90%</span></span>
+    <span class="ticker-item"><span class="t-sym">MSFT</span><span class="t-up">$415.33</span><span class="t-up">+0.55%</span></span>
+    <span class="ticker-item"><span class="t-sym">GOLD</span><span class="t-up">$2,384</span><span class="t-up">+0.40%</span></span>
+    <span class="ticker-item"><span class="t-sym">EUR/USD</span><span class="t-dn">1.0842</span><span class="t-dn">-0.12%</span></span>
+    <span class="ticker-item"><span class="t-sym">QQQ</span><span class="t-up">$441.15</span><span class="t-up">+1.02%</span></span>
+    <span class="ticker-item"><span class="t-sym">META</span><span class="t-up">$490.78</span><span class="t-up">+1.56%</span></span>
+    <!-- duplicated for seamless scroll -->
+    <span class="ticker-item"><span class="t-sym">AAPL</span><span class="t-up">$189.84</span><span class="t-up">+1.23%</span></span>
+    <span class="ticker-item"><span class="t-sym">TSLA</span><span class="t-dn">$248.12</span><span class="t-dn">-0.87%</span></span>
+    <span class="ticker-item"><span class="t-sym">NVDA</span><span class="t-up">$875.40</span><span class="t-up">+2.14%</span></span>
+    <span class="ticker-item"><span class="t-sym">BTC</span><span class="t-up">$67,430</span><span class="t-up">+3.20%</span></span>
+    <span class="ticker-item"><span class="t-sym">ETH</span><span class="t-dn">$3,512</span><span class="t-dn">-0.45%</span></span>
+    <span class="ticker-item"><span class="t-sym">SPY</span><span class="t-up">$519.22</span><span class="t-up">+0.61%</span></span>
+    <span class="ticker-item"><span class="t-sym">AMZN</span><span class="t-up">$182.40</span><span class="t-up">+0.90%</span></span>
+    <span class="ticker-item"><span class="t-sym">MSFT</span><span class="t-up">$415.33</span><span class="t-up">+0.55%</span></span>
+    <span class="ticker-item"><span class="t-sym">GOLD</span><span class="t-up">$2,384</span><span class="t-up">+0.40%</span></span>
+    <span class="ticker-item"><span class="t-sym">EUR/USD</span><span class="t-dn">1.0842</span><span class="t-dn">-0.12%</span></span>
+    <span class="ticker-item"><span class="t-sym">QQQ</span><span class="t-up">$441.15</span><span class="t-up">+1.02%</span></span>
+    <span class="ticker-item"><span class="t-sym">META</span><span class="t-up">$490.78</span><span class="t-up">+1.56%</span></span>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page-wrap" style="padding-top: 24px;">
+
+  <!-- HERO -->
+  <div class="hero" id="hero-section">
+    <div class="hero-eyebrow">
+      <div class="live-dot"></div>
+      Real market data · Fake money · Real competition
+    </div>
+    <h1 class="hero-title">
+      Trade like a pro.<br>
+      <span class="hl">Compete like a champion.</span>
+    </h1>
+    <p class="hero-sub">
+      Master stocks, crypto, forex and commodities with $10,000 virtual money.
+      Join 2-week leagues, crush your friends, and climb the leaderboard.
+    </p>
+    <div class="hero-ctas">
+      <a href="/trade.html" class="hero-cta-primary">🚀 Start Trading Free</a>
+      <a href="/league.html" class="hero-cta-secondary">🏆 Join a League →</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="stat-traders">—</div>
+        <div class="hero-stat-label">Active Traders</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">$10K</div>
+        <div class="hero-stat-label">Starting Capital</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">5,000+</div>
+        <div class="hero-stat-label">Assets to Trade</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="stat-leagues">—</div>
+        <div class="hero-stat-label">Active Leagues</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKET OVERVIEW -->
+  <div class="reveal" id="market-section" style="margin-bottom: 48px;">
+    <div class="section-header">
+      <div class="section-title">
+        📊 Market Overview
+        <div class="live-dot" style="margin-left:4px;"></div>
+      </div>
+      <a href="/trade.html" class="section-link">Trade all →</a>
+    </div>
+
+    <div class="asset-tabs" id="asset-tabs">
+      <button class="asset-tab active" data-type="all">All</button>
+      <button class="asset-tab" data-type="stock">Stocks</button>
+      <button class="asset-tab" data-type="etf">ETFs</button>
+      <button class="asset-tab" data-type="crypto">Crypto</button>
+      <button class="asset-tab" data-type="forex">Forex</button>
+      <button class="asset-tab" data-type="commodity">Commodities</button>
+    </div>
+
+    <div class="market-cards" id="market-cards">
+      <!-- Skeleton -->
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+      <div class="skeleton" style="height:130px;"></div>
+    </div>
+  </div>
+
+  <!-- MAIN TWO-COL -->
+  <div class="home-cols">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- LEAGUE BANNER -->
+      <div class="reveal" style="margin-bottom: 32px;">
+        <a href="/league.html" class="league-banner" id="league-banner">
+          <div class="league-banner-icon">🏆</div>
+          <div class="league-banner-info">
+            <div class="league-banner-title">BrickStocks League</div>
+            <div class="league-banner-sub">
+              2-week sprint — everyone starts with $10,000. Best return wins. Real competition, real bragging rights.
+            </div>
+            <div class="league-banner-meta">
+              <div class="lbm-item">💰 <span class="lbm-val">$10,000</span>&nbsp;starting</div>
+              <div class="lbm-item">⏱ <span class="lbm-val" id="league-countdown">—</span>&nbsp;remaining</div>
+              <div class="lbm-item">👥 <span class="lbm-val" id="league-players">—</span>&nbsp;competing</div>
+              <div class="lbm-item">🎁 <span class="lbm-val">500</span>&nbsp;Chips prize</div>
+            </div>
+          </div>
+          <button class="league-banner-cta" onclick="event.preventDefault(); window.location='/league.html'">
+            Join League
+          </button>
+        </a>
+      </div>
+
+      <!-- FEATURES -->
+      <div class="reveal" style="margin-bottom: 32px;">
+        <div class="section-header">
+          <div class="section-title">✨ Everything you need</div>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon fi-cyan">📈</div>
+            <div class="feature-title">Real Market Data</div>
+            <div class="feature-desc">Live prices from NYSE, NASDAQ, crypto exchanges. Real charts. The same data pro traders use — you just use fake money.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon fi-purple">🤖</div>
+            <div class="feature-title">AI Trading Agent</div>
+            <div class="feature-desc">Our AI analyzes RSI, MACD, sentiment, earnings, and macro data to suggest high-confidence trades across all asset classes.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon fi-green">🏆</div>
+            <div class="feature-title">2-Week Leagues</div>
+            <div class="feature-desc">Everyone starts equal at $10K. 14 days to build the best portfolio. Top return wins Chips and eternal glory.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon fi-gold">🎯</div>
+            <div class="feature-title">Trading Challenges</div>
+            <div class="feature-desc">Daily and weekly missions — make a winning trade, diversify across sectors, hit a return target. Earn Chips for every win.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon fi-blue">🔬</div>
+            <div class="feature-title">Deep Research</div>
+            <div class="feature-desc">Company fundamentals, earnings history, analyst ratings, sector analysis, macro events — everything in one tab.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon fi-red">📊</div>
+            <div class="feature-title">5 Asset Classes</div>
+            <div class="feature-desc">Stocks, ETFs, Crypto, Forex, Commodities. Diversify like a real fund manager. One app, all markets.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LATEST NEWS -->
+      <div class="reveal card" style="margin-bottom: 32px;">
+        <div class="card-header">
+          <div class="card-title">📰 Market News</div>
+          <a href="/research.html?tab=news" class="section-link">See all →</a>
+        </div>
+        <div id="news-feed">
+          <div class="skeleton" style="height:60px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:60px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:60px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+
+      <!-- AI SIGNAL PREVIEW -->
+      <div class="reveal card" style="margin-bottom: 16px;">
+        <div class="card-header">
+          <div class="card-title">🤖 AI Signals</div>
+          <a href="/agent.html" class="section-link">All signals →</a>
+        </div>
+        <div id="ai-signals-preview">
+          <div class="skeleton" style="height:64px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:64px;margin-bottom:8px;"></div>
+          <div class="skeleton" style="height:64px;"></div>
+        </div>
+      </div>
+
+      <!-- WATCHLIST PREVIEW -->
+      <div class="reveal card" style="margin-bottom: 16px;">
+        <div class="card-header">
+          <div class="card-title">👁️ My Watchlist</div>
+          <a href="/watchlist.html" class="section-link">Manage →</a>
+        </div>
+        <div id="wl-preview-body"></div>
+      </div>
+
+      <!-- TOP TRADERS -->
+      <div class="reveal card" style="margin-bottom: 16px;">
+        <div class="card-header">
+          <div class="card-title">🏅 Top Traders</div>
+          <a href="/leaderboard.html" class="section-link">Full board →</a>
+        </div>
+        <div id="top-traders">
+          <div class="skeleton" style="height:56px;margin-bottom:8px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:56px;margin-bottom:8px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:56px;border-radius:10px;"></div>
+        </div>
+      </div>
+
+      <!-- QUICK TRADE -->
+      <div class="reveal card">
+        <div class="card-header">
+          <div class="card-title">⚡ Quick Trade</div>
+          <a href="/trade.html" class="section-link">Advanced →</a>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" id="quick-search" placeholder="Search symbol or company…" autocomplete="off">
+          </div>
+        </div>
+        <div id="quick-results" style="display:none;"></div>
+        <div id="quick-action" style="display:none;">
+          <div style="margin-bottom:10px;">
+            <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--text);" id="qt-price">—</div>
+            <div style="font-family:var(--font-mono);font-size:12px;margin-top:2px;" id="qt-chg">—</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn btn-up" style="flex:1;" id="qt-buy-btn">Buy</button>
+            <button class="btn btn-dn" style="flex:1;" id="qt-sell-btn">Sell</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);text-align:center;">
+            Full controls at <a href="/trade.html" style="color:var(--accent);">Trade page</a>
+          </div>
+        </div>
+        <div id="quick-login-hint" style="display:none;text-align:center;padding:16px 0;">
+          <div style="font-size:13px;color:var(--text3);margin-bottom:10px;">Sign in to start trading</div>
+          <button class="btn btn-primary" onclick="window.BSAuth?.open()">Get Started Free</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+// ── Active nav ──────────────────────────────────────────────────
+document.querySelectorAll('.nav-links a').forEach(a => {
+  if (a.href === window.location.href) a.classList.add('active');
+});
+
+// ── Load market data ────────────────────────────────────────────
+const DEMO_MARKET = [
+  { symbol:'AAPL',    name:'Apple Inc.',           asset_type:'stock',     price:189.84, change_pct_1d: 1.23 },
+  { symbol:'MSFT',    name:'Microsoft Corp.',       asset_type:'stock',     price:415.33, change_pct_1d: 0.55 },
+  { symbol:'NVDA',    name:'NVIDIA Corp.',          asset_type:'stock',     price:875.40, change_pct_1d: 2.14 },
+  { symbol:'TSLA',    name:'Tesla Inc.',            asset_type:'stock',     price:248.12, change_pct_1d:-0.87 },
+  { symbol:'AMZN',    name:'Amazon.com',            asset_type:'stock',     price:182.40, change_pct_1d: 0.90 },
+  { symbol:'META',    name:'Meta Platforms',        asset_type:'stock',     price:490.78, change_pct_1d: 1.56 },
+  { symbol:'GOOGL',   name:'Alphabet Inc.',         asset_type:'stock',     price:168.22, change_pct_1d: 0.72 },
+  { symbol:'JPM',     name:'JPMorgan Chase',        asset_type:'stock',     price:198.45, change_pct_1d:-0.31 },
+  { symbol:'SPY',     name:'S&P 500 ETF',           asset_type:'etf',       price:519.22, change_pct_1d: 0.61 },
+  { symbol:'QQQ',     name:'Nasdaq 100 ETF',        asset_type:'etf',       price:441.15, change_pct_1d: 1.02 },
+  { symbol:'BTC',     name:'Bitcoin',               asset_type:'crypto',    price:67430,  change_pct_1d: 3.20 },
+  { symbol:'ETH',     name:'Ethereum',              asset_type:'crypto',    price:3512,   change_pct_1d:-0.45 },
+  { symbol:'SOL',     name:'Solana',                asset_type:'crypto',    price:172.44, change_pct_1d: 4.15 },
+  { symbol:'EUR/USD', name:'Euro / US Dollar',      asset_type:'forex',     price:1.0842, change_pct_1d:-0.12 },
+  { symbol:'GBP/USD', name:'British Pound / USD',   asset_type:'forex',     price:1.2734, change_pct_1d: 0.08 },
+  { symbol:'GOLD',    name:'Gold Spot',             asset_type:'commodity', price:2384,   change_pct_1d: 0.40 },
+  { symbol:'OIL',     name:'Crude Oil WTI',         asset_type:'commodity', price:82.14,  change_pct_1d:-1.22 },
+  { symbol:'SILVER',  name:'Silver Spot',           asset_type:'commodity', price:28.42,  change_pct_1d: 0.65 },
+];
+
+let currentType = 'all';
+let marketData  = [];
+
+async function loadMarket() {
+  // Try DB first
+  try {
+    const data = await BSMarket.getMarketOverview();
+    marketData = data.length ? data : DEMO_MARKET;
+  } catch {
+    marketData = DEMO_MARKET;
+  }
+  renderMarket(currentType);
+  updateTicker(marketData);
+}
+
+function renderMarket(type) {
+  const filtered = type === 'all' ? marketData : marketData.filter(d => d.asset_type === type);
+  const el = document.getElementById('market-cards');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📊</span><h3>No data yet</h3><p>Market data updates nightly.</p></div>';
+    return;
+  }
+  el.innerHTML = filtered.slice(0, 12).map(d => {
+    const pct   = d.change_pct_1d || 0;
+    const cls   = pct >= 0 ? 'chg-up' : 'chg-dn';
+    const sign  = pct >= 0 ? '+' : '';
+    const digits = d.asset_type === 'forex' ? 4 : d.price >= 1000 ? 0 : 2;
+    return `
+      <a class="market-card anim-fadeInUp" href="/trade.html?symbol=${d.symbol}&type=${d.asset_type}">
+        <div class="mc-header">
+          <span class="mc-sym">${d.symbol}</span>
+          <span class="mc-type">${BSMarket.assetIcon(d.asset_type)} ${BSMarket.assetLabel(d.asset_type)}</span>
+        </div>
+        <div class="mc-name">${d.name || ''}</div>
+        <div class="mc-price">${BSMarket.fmtPrice(d.price, digits)}</div>
+        <div class="mc-chg ${cls}">${sign}${pct.toFixed(2)}%</div>
+      </a>`;
+  }).join('');
+}
+
+// Asset tab filter
+document.getElementById('asset-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.asset-tab');
+  if (!tab) return;
+  document.querySelectorAll('.asset-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentType = tab.dataset.type;
+  renderMarket(currentType);
+});
+
+// Update live ticker
+function updateTicker(data) {
+  const track = document.getElementById('ticker-track');
+  if (!data.length) return;
+  const items = [...data, ...data].slice(0, 24).map(d => {
+    const pct  = d.change_pct_1d || 0;
+    const cls  = pct >= 0 ? 't-up' : 't-dn';
+    const sign = pct >= 0 ? '+' : '';
+    const digits = d.asset_type === 'forex' ? 4 : d.price >= 1000 ? 0 : 2;
+    return `<span class="ticker-item">
+      <span class="t-sym">${d.symbol}</span>
+      <span class="${cls}">${BSMarket.fmtPrice(d.price, digits)}</span>
+      <span class="${cls}">${sign}${pct.toFixed(2)}%</span>
+    </span>`;
+  }).join('');
+  track.innerHTML = items + items;
+}
+
+// ── Load news ────────────────────────────────────────────────────
+async function loadNews() {
+  const newsFeed = document.getElementById('news-feed');
+  try {
+    const news = await BSMarket.getNews(null, 5);
+    if (!news.length) throw new Error('empty');
+    newsFeed.innerHTML = news.map(n => `
+      <a class="news-item" href="${n.url || '#'}" target="_blank" rel="noopener">
+        <div class="news-thumb">${n.image ? `<img src="${n.image}" alt="">` : '📰'}</div>
+        <div class="news-info">
+          <div class="news-headline">${n.headline}</div>
+          <div class="news-meta">
+            <span>${n.source || 'News'}</span>
+            <span>${timeAgo(n.datetime || n.published_at)}</span>
+            ${n.sentiment ? `<span class="news-sentiment ns-${n.sentiment}">${n.sentiment}</span>` : ''}
+          </div>
+        </div>
+      </a>`).join('');
+  } catch {
+    newsFeed.innerHTML = DEMO_NEWS.map(n => `
+      <a class="news-item" href="#" target="_blank">
+        <div class="news-thumb">📰</div>
+        <div class="news-info">
+          <div class="news-headline">${n.headline}</div>
+          <div class="news-meta"><span>${n.source}</span><span>${n.time}</span>
+            <span class="news-sentiment ns-${n.sentiment}">${n.sentiment}</span>
+          </div>
+        </div>
+      </a>`).join('');
+  }
+}
+
+const DEMO_NEWS = [
+  { headline: 'Fed signals potential rate cuts as inflation data comes in cooler than expected', source: 'Reuters', time: '2h ago', sentiment: 'positive' },
+  { headline: 'NVIDIA beats Q1 earnings by 22%, raises full-year guidance on AI chip demand', source: 'Bloomberg', time: '4h ago', sentiment: 'positive' },
+  { headline: 'Oil prices drop 1.5% as OPEC debates extending production cuts into next quarter', source: 'WSJ', time: '6h ago', sentiment: 'negative' },
+  { headline: 'Bitcoin surges past $67K as spot ETF inflows hit new weekly record of $1.2B', source: 'CoinDesk', time: '8h ago', sentiment: 'positive' },
+  { headline: 'Tesla deliveries disappoint for third consecutive quarter, shares fall in after-hours', source: 'CNBC', time: '10h ago', sentiment: 'negative' },
+];
+
+// ── Load AI signals preview ──────────────────────────────────────
+async function loadSignals() {
+  const el = document.getElementById('ai-signals-preview');
+  try {
+    const signals = await BSMarket.getAgentSignals(4);
+    if (!signals.length) throw new Error('empty');
+    el.innerHTML = signals.map(s => renderSignalRow(s)).join('');
+  } catch {
+    el.innerHTML = DEMO_SIGNALS.map(s => renderSignalRow(s)).join('');
+  }
+}
+
+function renderSignalRow(s) {
+  const typeColor = { buy: 'var(--up)', sell: 'var(--dn)', hold: 'var(--gold)', watch: 'var(--accent)' };
+  const typeIcon  = { buy: '🟢', sell: '🔴', hold: '🟡', watch: '👁️' };
+  const conf = s.confidence || 0;
+  const bar  = Math.min(conf, 100);
+  return `
+  <a href="/agent.html" style="display:flex;align-items:center;gap:10px;padding:10px;
+    background:var(--bg4);border-radius:10px;margin-bottom:8px;
+    text-decoration:none;color:inherit;transition:background 0.15s;"
+    onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+    onmouseout="this.style.background='var(--bg4)'">
+    <div style="font-size:20px;flex-shrink:0;">${typeIcon[s.signal_type]||'📊'}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+        <span style="font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--text);">${s.symbol}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;
+          color:${typeColor[s.signal_type]||'var(--accent)'};">${(s.signal_type||'').toUpperCase()}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);">${s.asset_type||''}</span>
+      </div>
+      <div style="height:3px;background:var(--bg5);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${bar}%;background:${typeColor[s.signal_type]||'var(--accent)'};border-radius:2px;"></div>
+      </div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${typeColor[s.signal_type]||'var(--accent)'};">
+      ${conf.toFixed(0)}%
+    </div>
+  </a>`;
+}
+
+const DEMO_SIGNALS = [
+  { symbol:'NVDA',    asset_type:'stock',  signal_type:'buy',   confidence:87 },
+  { symbol:'BTC',     asset_type:'crypto', signal_type:'buy',   confidence:74 },
+  { symbol:'EUR/USD', asset_type:'forex',  signal_type:'sell',  confidence:68 },
+  { symbol:'TSLA',    asset_type:'stock',  signal_type:'watch', confidence:55 },
+];
+
+// ── Load top traders ─────────────────────────────────────────────
+async function loadTopTraders() {
+  const el = document.getElementById('top-traders');
+  try {
+    const { data } = await _db.from('profiles')
+      .select('username, display_name, trophies, tier')
+      .order('trophies', { ascending: false }).limit(5);
+    if (!data?.length) throw new Error('empty');
+    el.innerHTML = data.map((p, i) => renderTraderRow(p, i + 1)).join('');
+  } catch {
+    el.innerHTML = DEMO_TRADERS.map((p, i) => renderTraderRow(p, i + 1)).join('');
+  }
+}
+
+function renderTraderRow(p, rank) {
+  const rankClass = rank <= 3 ? `r${rank}` : '';
+  const medals = ['🥇','🥈','🥉'];
+  const initials = (p.display_name || p.username || '?').slice(0, 2).toUpperCase();
+  const gain = p.return_pct != null ? p.return_pct : (p.trophies || 0);
+  return `
+  <a class="trader-row" href="/leaderboard.html">
+    <div class="trader-rank ${rankClass}">${medals[rank-1] || rank}</div>
+    <div class="trader-avatar">${initials}</div>
+    <div class="trader-info">
+      <div class="trader-name">${p.display_name || p.username}</div>
+      <div class="trader-handle">@${p.username || '—'}</div>
+    </div>
+    <div class="trader-gain ${gain >= 0 ? 'chg-up' : 'chg-dn'}">
+      ${gain >= 0 ? '+' : ''}${typeof gain === 'number' ? gain.toFixed(1) : gain}%
+    </div>
+  </a>`;
+}
+
+const DEMO_TRADERS = [
+  { username:'cryptoking',  display_name:'Crypto King',  trophies:340, return_pct: 38.2 },
+  { username:'wallstbull',  display_name:'WallSt Bull',  trophies:290, return_pct: 31.7 },
+  { username:'techtrader',  display_name:'Tech Trader',  trophies:245, return_pct: 27.4 },
+  { username:'divaqueen',   display_name:'Diva Queen',   trophies:198, return_pct: 22.1 },
+  { username:'forexfox',    display_name:'Forex Fox',    trophies:167, return_pct: 18.9 },
+];
+
+// ── Load league info ─────────────────────────────────────────────
+async function loadLeagueInfo() {
+  try {
+    const { data } = await _db.from('leagues')
+      .select('*').eq('status','active').order('start_date', { ascending: false }).limit(1).single();
+    if (!data) return;
+    const end = new Date(data.end_date + 'T23:59:59');
+    function update() {
+      const diff = end - Date.now();
+      if (diff <= 0) { document.getElementById('league-countdown').textContent = 'Ended'; return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      document.getElementById('league-countdown').textContent = `${d}d ${h}h`;
+    }
+    update(); setInterval(update, 60000);
+    document.getElementById('stat-leagues').textContent = '1';
+  } catch {
+    document.getElementById('league-countdown').textContent = '12d 6h';
+    document.getElementById('stat-leagues').textContent = '3';
+  }
+}
+
+async function loadStats() {
+  try {
+    const { count } = await _db.from('profiles').select('id', { count: 'exact', head: true });
+    document.getElementById('stat-traders').textContent = count ? count.toLocaleString() : '2,400+';
+  } catch {
+    document.getElementById('stat-traders').textContent = '2,400+';
+  }
+}
+
+// ── Quick search ─────────────────────────────────────────────────
+let searchTimeout;
+document.getElementById('quick-search').addEventListener('input', async (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  const resEl = document.getElementById('quick-results');
+  if (q.length < 2) { resEl.style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    resEl.style.display = '';
+    resEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px;">Searching…</div>';
+    const results = await BSMarket.searchSymbols(q);
+    if (!results.length) {
+      resEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px;">No results</div>';
+      return;
+    }
+    resEl.innerHTML = results.slice(0,5).map(r => `
+      <div onclick="selectQuick('${r.symbol}','${r.type}')" style="
+        display:flex;align-items:center;gap:8px;padding:8px 10px;
+        border-radius:8px;cursor:pointer;transition:background 0.12s;margin-bottom:4px;"
+        onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+        onmouseout="this.style.background=''">
+        <span style="font-family:var(--font-display);font-size:13px;font-weight:700;">${r.symbol}</span>
+        <span style="font-size:11px;color:var(--text3);flex:1;">${r.description || r.name}</span>
+        <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">${r.type}</span>
+      </div>`).join('');
+  }, 350);
+});
+
+let quickSymbol = null;
+async function selectQuick(symbol, type) {
+  quickSymbol = { symbol, type };
+  document.getElementById('quick-results').style.display = 'none';
+  document.getElementById('quick-search').value = symbol;
+  const actionEl = document.getElementById('quick-action');
+  const loginEl  = document.getElementById('quick-login-hint');
+  actionEl.style.display = '';
+  document.getElementById('qt-price').textContent = 'Loading…';
+
+  const quote = await BSMarket.getQuote(symbol, type);
+  if (quote) {
+    const pct = quote.dp || quote.change_pct_1d || 0;
+    document.getElementById('qt-price').textContent = BSMarket.fmtPrice(quote.c || quote.price);
+    const chgEl = document.getElementById('qt-chg');
+    chgEl.textContent = BSMarket.fmtChange(pct);
+    chgEl.className = pct >= 0 ? 'chg-up' : 'chg-dn';
+  }
+
+  if (!window.BSAuth?.getUser()) {
+    actionEl.style.display = 'none';
+    loginEl.style.display = '';
+  }
+}
+
+document.getElementById('qt-buy-btn')?.addEventListener('click', () => {
+  if (!quickSymbol) return;
+  window.location = `/trade.html?symbol=${quickSymbol.symbol}&type=${quickSymbol.type}&action=buy`;
+});
+document.getElementById('qt-sell-btn')?.addEventListener('click', () => {
+  if (!quickSymbol) return;
+  window.location = `/trade.html?symbol=${quickSymbol.symbol}&type=${quickSymbol.type}&action=sell`;
+});
+
+// ── Scroll reveal ────────────────────────────────────────────────
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold: 0.08 });
+revealEls.forEach(el => observer.observe(el));
+
+// ── Utility ──────────────────────────────────────────────────────
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+// ── Watchlist preview ────────────────────────────────────────────
+function loadWatchlistPreview() {
+  const el = document.getElementById('wl-preview-body');
+  if (!el) return;
+  let wl = [];
+  try { wl = JSON.parse(localStorage.getItem('bs_watchlist_v2')) || []; } catch {}
+
+  if (!wl.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:16px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">👁️</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:10px;">No assets being watched yet.</div>
+        <a href="/watchlist.html" class="btn btn-outline btn-sm" style="font-size:12px;">Start Watching →</a>
+      </div>`;
+    return;
+  }
+
+  const DEMO_Q = {
+    AAPL:{price:189.45,change:1.23},NVDA:{price:875.40,change:5.23},MSFT:{price:415.20,change:0.87},
+    TSLA:{price:247.80,change:-2.14},BTC:{price:67420,change:3.45},ETH:{price:3180,change:1.87},
+    SOL:{price:182.40,change:5.67},GOOGL:{price:165.80,change:-0.42},META:{price:543.60,change:1.65},
+    AMZN:{price:192.30,change:2.14},EURUSD:{price:1.0856,change:0.12},GBPUSD:{price:1.2678,change:-0.08},
+  };
+
+  const shown = wl.slice(0, 5);
+  el.innerHTML = shown.map(w => {
+    const q = DEMO_Q[w.symbol] || { price: null, change: 0 };
+    const up = (q.change||0) >= 0;
+    const cc = up ? 'color:var(--up)' : 'color:var(--dn)';
+    const cs = up ? '+' : '';
+    const fmtP = p => p == null ? '—' : (p >= 1000 ? '$'+p.toLocaleString('en-US',{maximumFractionDigits:0}) : '$'+p.toFixed(2));
+    return `
+      <a href="/watchlist.html" style="display:flex;align-items:center;gap:10px;padding:9px 10px;
+        background:var(--bg4);border-radius:10px;margin-bottom:7px;
+        text-decoration:none;color:inherit;transition:background .13s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+        onmouseout="this.style.background='var(--bg4)'">
+        <div style="font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--text);min-width:52px;">${w.symbol}</div>
+        <div style="flex:1;font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${w.name}</div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text);">${fmtP(q.price)}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;font-weight:600;${cc};">${cs}${(q.change||0).toFixed(2)}%</div>
+        </div>
+      </a>`;
+  }).join('');
+
+  if (wl.length > 5) {
+    el.innerHTML += `<a href="/watchlist.html" style="display:block;text-align:center;font-size:11px;color:var(--text3);padding:4px 0;text-decoration:none;">+${wl.length-5} more →</a>`;
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────
+loadMarket();
+loadNews();
+loadSignals();
+loadTopTraders();
+loadLeagueInfo();
+loadStats();
+loadWatchlistPreview();
+</script>
+</body>
+</html>

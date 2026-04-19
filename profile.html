@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Profile · BrickStocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+.profile-hero {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 28px;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+}
+
+.profile-hero::before {
+  content: ''; position: absolute; top: -60px; right: -40px;
+  width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,211,238,0.06), transparent 70%);
+  pointer-events: none;
+}
+
+.ph-top { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+
+.ph-avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--accent-dim); border: 2px solid rgba(34,211,238,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 28px; font-weight: 800;
+  color: var(--accent); flex-shrink: 0;
+}
+
+.ph-info { flex: 1; min-width: 0; }
+
+.ph-name { font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); margin-bottom: 2px; }
+.ph-handle { font-size: 13px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 8px; }
+.ph-bio { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; max-width: 480px; }
+
+.ph-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.ph-actions { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; align-self: flex-start; }
+
+.ph-stats {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 0; margin-top: 20px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 600px) { .ph-stats { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+
+.ph-stat { text-align: center; padding: 4px 0; }
+.ph-stat-val { font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+.ph-stat-lbl { font-size: 10px; color: var(--text3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+/* Tier banner */
+.tier-banner {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 20px;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 16px;
+}
+
+.tb-icon { font-size: 32px; }
+.tb-name { font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+.tb-sub  { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+.tb-bar-wrap { flex: 1; padding: 0 8px; }
+.tb-bar-bg { height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.tb-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.6s; }
+.tb-bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--text3); display: flex; justify-content: space-between; }
+
+/* Edit form */
+.edit-form { display: none; }
+.edit-form.open { display: block; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-sm" style="padding-top:72px;">
+
+  <div id="profile-content" style="display:none;">
+
+    <!-- Hero -->
+    <div class="profile-hero">
+      <div class="ph-top">
+        <div class="ph-avatar" id="ph-avatar">?</div>
+        <div class="ph-info">
+          <div class="ph-name" id="ph-name">—</div>
+          <div class="ph-handle" id="ph-handle">@—</div>
+          <div class="ph-bio" id="ph-bio"></div>
+          <div class="ph-badges">
+            <span class="badge badge-accent" id="ph-tier-badge">Rookie</span>
+            <span class="badge badge-gold" id="ph-chips-badge">— 🪙</span>
+            <span class="badge badge-muted" id="ph-joined-badge"></span>
+          </div>
+        </div>
+        <div class="ph-actions" id="ph-actions"></div>
+      </div>
+      <div class="ph-stats">
+        <div class="ph-stat">
+          <div class="ph-stat-val" id="ps-trades">—</div>
+          <div class="ph-stat-lbl">Trades</div>
+        </div>
+        <div class="ph-stat">
+          <div class="ph-stat-val" id="ps-winrate">—</div>
+          <div class="ph-stat-lbl">Win Rate</div>
+        </div>
+        <div class="ph-stat">
+          <div class="ph-stat-val" id="ps-return">—</div>
+          <div class="ph-stat-lbl">All-Time Return</div>
+        </div>
+        <div class="ph-stat">
+          <div class="ph-stat-val" id="ps-trophies">—</div>
+          <div class="ph-stat-lbl">Trophies</div>
+        </div>
+        <div class="ph-stat">
+          <div class="ph-stat-val" id="ps-chips">—</div>
+          <div class="ph-stat-lbl">Chips</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier progress -->
+    <div class="tier-banner" id="tier-banner">
+      <div class="tb-icon" id="tb-icon">🌱</div>
+      <div>
+        <div class="tb-name" id="tb-name">Rookie</div>
+        <div class="tb-sub">Tier</div>
+      </div>
+      <div class="tb-bar-wrap">
+        <div class="tb-bar-bg">
+          <div class="tb-bar-fill" id="tb-bar" style="width:0%;"></div>
+        </div>
+        <div class="tb-bar-label">
+          <span id="tb-current">0 trophies</span>
+          <span id="tb-next">Next: Trader</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit profile (own profile only) -->
+    <div class="card edit-form" id="edit-form" style="margin-bottom:20px;">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-title">✏️ Edit Profile</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEdit()">Cancel</button>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Display Name</label>
+        <input class="input" id="edit-display-name" placeholder="Your name">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Bio</label>
+        <textarea class="input" id="edit-bio" placeholder="Tell traders about yourself…" rows="3" style="resize:vertical;"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="stats">📊 Stats</button>
+      <button class="tab-btn" data-tab="recent">📋 Recent Trades</button>
+      <button class="tab-btn" data-tab="leagues">🏆 Leagues</button>
+      <button class="tab-btn" data-tab="watchlist">👁️ Watchlist</button>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="tab-panel active" id="panel-stats">
+      <div class="stat-grid" id="detailed-stats" style="margin-bottom:20px;">
+        <div class="stat-tile"><div class="stat-tile-label">Best Trade</div><div class="stat-tile-val up" id="best-trade">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-label">Worst Trade</div><div class="stat-tile-val dn" id="worst-trade">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-label">Fav Asset</div><div class="stat-tile-val acc" id="fav-asset">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-label">Total Volume</div><div class="stat-tile-val" id="total-vol">—</div></div>
+      </div>
+
+      <!-- Referral card -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom:12px;">
+          <div class="card-title">👥 Invite Friends</div>
+          <span class="badge badge-gold">+50 🪙 per referral</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+          Share your referral link. Earn 50 Chips for every friend who creates an account.
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input class="input" id="referral-link" readonly style="font-family:var(--font-mono);font-size:12px;">
+          <button class="btn btn-primary btn-sm" onclick="copyReferral()">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent trades -->
+    <div class="tab-panel" id="panel-recent">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1fr 80px 1fr 1fr 100px;gap:12px;padding:10px 14px;font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border);">
+          <div>Symbol</div><div>Action</div><div>Price</div><div>Value</div><div>Date</div>
+        </div>
+        <div id="recent-trades-list"></div>
+      </div>
+    </div>
+
+    <!-- Leagues history -->
+    <div class="tab-panel" id="panel-leagues">
+      <div id="leagues-history"></div>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="tab-panel" id="panel-watchlist">
+      <div id="profile-watchlist-body"></div>
+    </div>
+
+  </div>
+
+  <div id="profile-guest" style="display:none;" class="empty-state" style="padding:80px 0;">
+    <span class="empty-state-icon">👤</span>
+    <h3>Sign in to view your profile</h3>
+    <button class="btn btn-primary" onclick="window.BSAuth?.open()">Sign In</button>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let myUserId   = null;
+let myProfile  = null;
+let viewUserId = null;
+let isOwnProfile = false;
+
+const TIER_CONFIG = {
+  rookie:  { icon:'🌱', color:'var(--text3)',  next:'trader',  nextAt:100 },
+  trader:  { icon:'📈', color:'var(--accent)', next:'analyst', nextAt:300 },
+  analyst: { icon:'🔬', color:'var(--blue)',   next:'expert',  nextAt:600 },
+  expert:  { icon:'💎', color:'var(--purple)', next:'legend',  nextAt:1000 },
+  legend:  { icon:'👑', color:'var(--gold)',   next:null,      nextAt:null },
+};
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = async (user, profile) => {
+  myUserId  = user.id;
+  myProfile = profile;
+  const urlUser = new URLSearchParams(window.location.search).get('user');
+  if (urlUser && urlUser !== profile.username) {
+    await loadProfileByUsername(urlUser);
+  } else {
+    viewUserId   = user.id;
+    isOwnProfile = true;
+    renderProfile(profile);
+  }
+};
+
+async function loadProfileByUsername(username) {
+  const { data } = await _db.from('profiles').select('*').eq('username', username).single();
+  if (!data) {
+    document.getElementById('profile-content').style.display = 'none';
+    document.getElementById('profile-guest').style.display = '';
+    document.querySelector('#profile-guest h3').textContent = 'User not found';
+    return;
+  }
+  viewUserId   = data.id;
+  isOwnProfile = myUserId && myUserId === data.id;
+  renderProfile(data);
+}
+
+function renderProfile(p) {
+  document.getElementById('profile-content').style.display = '';
+  document.getElementById('profile-guest').style.display = 'none';
+
+  const initials = (p.display_name || p.username || '?').slice(0, 2).toUpperCase();
+  document.getElementById('ph-avatar').textContent = initials;
+  document.getElementById('ph-name').textContent   = p.display_name || p.username;
+  document.getElementById('ph-handle').textContent = '@' + (p.username || '');
+  document.getElementById('ph-bio').textContent    = p.bio || (isOwnProfile ? 'No bio yet — add one below.' : '');
+
+  const tierCfg = TIER_CONFIG[p.tier || 'rookie'];
+  document.getElementById('ph-tier-badge').textContent  = (p.tier || 'Rookie').charAt(0).toUpperCase() + (p.tier || 'rookie').slice(1);
+  document.getElementById('ph-chips-badge').textContent = (p.chips || 0).toLocaleString() + ' 🪙';
+  document.getElementById('ph-joined-badge').textContent = 'Joined ' + new Date(p.created_at).toLocaleDateString('en-US', {month:'short',year:'numeric'});
+
+  // Stats
+  const winRate = p.total_trades > 0 ? ((p.win_trades || 0) / p.total_trades * 100).toFixed(0) + '%' : '—';
+  const ret = p.return_pct != null ? (p.return_pct >= 0 ? '+' : '') + p.return_pct.toFixed(2) + '%' : '—';
+  document.getElementById('ps-trades').textContent   = (p.total_trades || 0).toLocaleString();
+  document.getElementById('ps-winrate').textContent  = winRate;
+  document.getElementById('ps-return').textContent   = ret;
+  document.getElementById('ps-trophies').textContent = (p.trophies || 0).toLocaleString();
+  document.getElementById('ps-chips').textContent    = (p.chips || 0).toLocaleString() + ' 🪙';
+
+  // Tier progress
+  document.getElementById('tb-icon').textContent = tierCfg.icon;
+  document.getElementById('tb-name').textContent = (p.tier || 'Rookie').charAt(0).toUpperCase() + (p.tier || 'rookie').slice(1);
+  document.getElementById('tb-name').style.color = tierCfg.color;
+  const prevAt = { rookie:0, trader:100, analyst:300, expert:600, legend:1000 }[p.tier || 'rookie'] || 0;
+  const trophies = p.trophies || 0;
+  const pct = tierCfg.nextAt ? Math.min(((trophies - prevAt) / (tierCfg.nextAt - prevAt)) * 100, 100) : 100;
+  document.getElementById('tb-bar').style.width = pct + '%';
+  document.getElementById('tb-bar').style.background = tierCfg.color;
+  document.getElementById('tb-current').textContent = trophies + ' trophies';
+  document.getElementById('tb-next').textContent = tierCfg.next ? `Next: ${tierCfg.next.charAt(0).toUpperCase()}${tierCfg.next.slice(1)} (${tierCfg.nextAt})` : '🏆 Max Tier';
+
+  // Own profile actions
+  const actionsEl = document.getElementById('ph-actions');
+  if (isOwnProfile) {
+    actionsEl.innerHTML = `<button class="btn btn-outline btn-sm" onclick="toggleEdit()">✏️ Edit</button>
+      <a href="/store.html" class="btn btn-outline btn-sm">🛒 Get Chips</a>`;
+    document.getElementById('edit-display-name').value = p.display_name || '';
+    document.getElementById('edit-bio').value = p.bio || '';
+    // Referral link
+    const refLink = `${window.location.origin}/?ref=${p.referral_code || ''}`;
+    document.getElementById('referral-link').value = refLink;
+  } else {
+    actionsEl.innerHTML = `<button class="btn btn-outline btn-sm" id="follow-btn">+ Follow</button>`;
+  }
+
+  loadRecentTrades(viewUserId);
+  loadLeagueHistory(viewUserId);
+  loadDetailedStats(viewUserId);
+}
+
+async function loadRecentTrades(userId) {
+  const el = document.getElementById('recent-trades-list');
+  const { data } = await _db.from('trades').select('*').eq('user_id', userId)
+    .order('executed_at', { ascending: false }).limit(20);
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;font-size:13px;color:var(--text3);">No trades yet.</div>';
+    return;
+  }
+  el.innerHTML = data.map(t => `
+    <div style="display:grid;grid-template-columns:1fr 80px 1fr 1fr 100px;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;cursor:pointer;"
+      onclick="window.location='/trade.html?symbol=${t.symbol}&type=${t.asset_type}'">
+      <div style="font-family:var(--font-display);font-size:13px;font-weight:700;">${t.symbol}</div>
+      <div style="font-family:var(--font-mono);font-weight:700;color:${t.action==='buy'?'var(--up)':'var(--dn)'};">${t.action.toUpperCase()}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;">${BSMarket.fmtPrice(t.price, 2)}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;">${BSMarket.fmtPrice(t.total_value)}</div>
+      <div style="font-size:11px;color:var(--text3);">${new Date(t.executed_at).toLocaleDateString()}</div>
+    </div>`).join('');
+}
+
+async function loadLeagueHistory(userId) {
+  const el = document.getElementById('leagues-history');
+  const { data } = await _db.from('league_members')
+    .select('*, leagues(name, start_date, end_date, status)')
+    .eq('user_id', userId)
+    .order('joined_at', { ascending: false });
+  if (!data?.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">🏆</span><h3>No leagues yet</h3><p>Join a league to start competing!</p><a href="/league.html" class="btn btn-primary">View Leagues</a></div>';
+    return;
+  }
+  el.innerHTML = data.map(m => {
+    const l   = m.leagues || {};
+    const ret = m.return_pct || 0;
+    return `
+      <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;">
+        <div style="font-size:28px;">${l.status === 'active' ? '🔥' : '🏁'}</div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:700;">${l.name || 'League'}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);">
+            ${l.start_date ? new Date(l.start_date).toLocaleDateString() : ''} →
+            ${l.end_date   ? new Date(l.end_date).toLocaleDateString() : ''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:${ret>=0?'var(--up)':'var(--dn)'};">
+            ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%
+          </div>
+          ${m.rank ? `<div style="font-size:11px;color:var(--text3);">Rank #${m.rank}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadDetailedStats(userId) {
+  const { data } = await _db.from('trades').select('*').eq('user_id', userId);
+  if (!data?.length) return;
+  // Best / worst trade
+  const byReturn = data.filter(t => t.action === 'sell').sort((a,b) => b.total_value - a.total_value);
+  if (byReturn.length) {
+    document.getElementById('best-trade').textContent  = '+' + BSMarket.fmtPrice(byReturn[0].total_value);
+    document.getElementById('worst-trade').textContent = BSMarket.fmtPrice(byReturn[byReturn.length-1].total_value);
+  }
+  // Most-traded asset type
+  const typeCounts = {};
+  data.forEach(t => { typeCounts[t.asset_type] = (typeCounts[t.asset_type] || 0) + 1; });
+  const fav = Object.entries(typeCounts).sort((a,b) => b[1]-a[1])[0];
+  if (fav) document.getElementById('fav-asset').textContent = fav[0];
+  // Total volume
+  const vol = data.reduce((s, t) => s + (t.total_value || 0), 0);
+  document.getElementById('total-vol').textContent = BSMarket.fmtPrice(vol);
+}
+
+function toggleEdit() {
+  document.getElementById('edit-form').classList.toggle('open');
+}
+
+async function saveProfile() {
+  const display_name = document.getElementById('edit-display-name').value.trim();
+  const bio          = document.getElementById('edit-bio').value.trim();
+  if (!myUserId) return;
+  await _db.from('profiles').update({ display_name, bio }).eq('id', myUserId);
+  document.getElementById('ph-name').textContent = display_name || myProfile?.username;
+  document.getElementById('ph-bio').textContent  = bio;
+  toggleEdit();
+  BSAuth.toast('Profile saved!', 'success');
+}
+
+function copyReferral() {
+  const val = document.getElementById('referral-link').value;
+  navigator.clipboard.writeText(val).then(() => BSAuth.toast('Referral link copied!', 'success'));
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'watchlist') renderProfileWatchlist();
+  });
+});
+
+function renderProfileWatchlist() {
+  const el = document.getElementById('profile-watchlist-body');
+  if (!el) return;
+  let wl = [];
+  try { wl = JSON.parse(localStorage.getItem('bs_watchlist_v2')) || []; } catch {}
+
+  if (!wl.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:40px 0;">
+      <span class="empty-state-icon">👁️</span>
+      <h3>No assets on your watchlist</h3>
+      <p>Add stocks, crypto, and forex pairs to track on the Watchlist page.</p>
+      <a href="/watchlist.html" class="btn btn-outline" style="margin-top:12px;">Open Watchlist →</a>
+    </div>`;
+    return;
+  }
+
+  const DEMO_Q = {
+    AAPL:{p:189.45,c:1.23},NVDA:{p:875.40,c:5.23},MSFT:{p:415.20,c:0.87},TSLA:{p:247.80,c:-2.14},
+    BTC:{p:67420,c:3.45},ETH:{p:3180,c:1.87},SOL:{p:182.40,c:5.67},GOOGL:{p:165.80,c:-0.42},
+    META:{p:543.60,c:1.65},AMZN:{p:192.30,c:2.14},EURUSD:{p:1.0856,c:0.12},
+  };
+  const TYPE_COLOR = {stock:'var(--accent)',crypto:'var(--gold)',forex:'var(--purple)'};
+
+  el.innerHTML = `<div style="display:grid;gap:10px;">` + wl.map(w => {
+    const q  = DEMO_Q[w.symbol] || { p: null, c: 0 };
+    const up = q.c >= 0;
+    const fmt = p => p == null ? '—' : (p >= 10000 ? '$'+p.toLocaleString('en-US',{maximumFractionDigits:0}) : p < 1 ? '$'+p.toFixed(4) : '$'+p.toFixed(2));
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;
+        background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);">
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:800;min-width:56px;">${w.symbol}</div>
+        <span style="font-family:var(--font-mono);font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;
+          background:${TYPE_COLOR[w.type]||'var(--accent)'}22;color:${TYPE_COLOR[w.type]||'var(--accent)'};">${w.type}</span>
+        <div style="flex:1;font-size:12px;color:var(--text3);">${w.name}</div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${fmt(q.p)}</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:${up?'var(--up)':'var(--dn)'};">
+            ${up?'+':''}${q.c.toFixed(2)}%
+          </div>
+        </div>
+        <a href="/trade.html?symbol=${w.symbol}&type=${w.type}"
+          style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;font-family:var(--font-display);
+          background:var(--accent-dim);color:var(--accent);border:1px solid rgba(34,211,238,.2);text-decoration:none;">
+          Trade
+        </a>
+      </div>`;
+  }).join('') + `</div>
+  <div style="text-align:center;margin-top:14px;">
+    <a href="/watchlist.html" class="btn btn-outline btn-sm">Manage Watchlist →</a>
+  </div>`
+}
+
+// Load public profile from URL if not logged in
+setTimeout(() => {
+  const urlUser = new URLSearchParams(window.location.search).get('user');
+  if (urlUser && !myUserId) {
+    loadProfileByUsername(urlUser);
+  } else if (!myUserId) {
+    document.getElementById('profile-guest').style.display = '';
+  }
+}, 1500);
+</script>
+</body>
+</html>

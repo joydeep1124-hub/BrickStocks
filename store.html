@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Store · BrickStocks</title>
+<meta name="description" content="Buy Chips to unlock premium features, join leagues, and compete at the highest level.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+.store-hero {
+  text-align: center; padding: 40px 0 32px;
+}
+
+.store-hero-title {
+  font-family: var(--font-display); font-size: 36px;
+  font-weight: 800; letter-spacing: -1.5px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--gold), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.store-hero-sub { font-size: 15px; color: var(--text2); max-width: 480px; margin: 0 auto 16px; }
+
+.chips-balance {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--gold-dim); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 20px; padding: 8px 20px;
+  font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--gold);
+}
+
+/* ── Chips packages ─────────────────────────────── */
+.packages-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px; margin-bottom: 40px;
+}
+
+.package-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 24px;
+  text-align: center; position: relative; overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  cursor: pointer;
+}
+
+.package-card:hover {
+  border-color: var(--border2); transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.package-card.popular {
+  border-color: rgba(34,211,238,0.4);
+  background: linear-gradient(135deg, rgba(34,211,238,0.06), var(--bg3));
+}
+
+.package-card.best-value {
+  border-color: rgba(245,158,11,0.4);
+  background: linear-gradient(135deg, rgba(245,158,11,0.06), var(--bg3));
+}
+
+.package-badge {
+  position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  padding: 3px 12px; border-radius: 0 0 8px 8px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.package-badge.popular    { background: var(--accent); color: #07090d; }
+.package-badge.best-value { background: var(--gold); color: #07090d; }
+
+.package-icon { font-size: 40px; margin-bottom: 12px; }
+
+.package-chips {
+  font-family: var(--font-display); font-size: 32px; font-weight: 800;
+  letter-spacing: -1px; color: var(--text); margin-bottom: 4px;
+}
+
+.package-bonus {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--up); margin-bottom: 12px;
+}
+
+.package-price {
+  font-family: var(--font-display); font-size: 22px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--text); margin-bottom: 4px;
+}
+
+.package-per {
+  font-size: 11px; color: var(--text3); font-family: var(--font-mono);
+  margin-bottom: 16px;
+}
+
+.package-buy-btn {
+  width: 100%; padding: 11px; border: none; border-radius: 10px;
+  font-family: var(--font-display); font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: all 0.15s;
+}
+
+.package-card.popular    .package-buy-btn { background: var(--accent); color: #07090d; }
+.package-card.popular    .package-buy-btn:hover { background: var(--accent2); }
+.package-card.best-value .package-buy-btn { background: var(--gold); color: #07090d; }
+.package-card.best-value .package-buy-btn:hover { background: #e08a0a; }
+.package-card:not(.popular):not(.best-value) .package-buy-btn { background: var(--bg4); color: var(--text); border: 1px solid var(--border2); }
+.package-card:not(.popular):not(.best-value) .package-buy-btn:hover { background: var(--bg5); }
+
+/* ── What are Chips ─────────────────────────────── */
+.chips-usage-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .chips-usage-grid { grid-template-columns: 1fr; } }
+
+.cu-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px; background: var(--bg4); border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.cu-icon { font-size: 22px; flex-shrink: 0; }
+.cu-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.cu-desc  { font-size: 11px; color: var(--text3); line-height: 1.5; }
+
+/* ── Free chips section ─────────────────────────── */
+.free-chips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .free-chips-grid { grid-template-columns: 1fr; } }
+
+.free-chip-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px;
+  display: flex; gap: 12px; align-items: center;
+  cursor: pointer; transition: border-color 0.15s;
+  text-decoration: none; color: inherit;
+}
+
+.free-chip-card:hover { border-color: var(--border2); }
+
+.fcc-icon { font-size: 28px; flex-shrink: 0; }
+.fcc-info { flex: 1; }
+.fcc-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.fcc-desc  { font-size: 11px; color: var(--text3); }
+.fcc-chips { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+
+/* ── Premium feature cards ──────────────────────────── */
+.pf-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;
+}
+
+.pf-card {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px 20px;
+  position: relative; overflow: hidden;
+  transition: border-color .15s, transform .15s;
+}
+
+.pf-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+
+.pf-card.unlocked {
+  border-color: rgba(34,197,94,.3);
+  background: linear-gradient(135deg, rgba(34,197,94,.04), var(--bg4));
+}
+
+.pf-card.locked-card {
+  opacity: .85;
+}
+
+.pf-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; }
+.pf-icon   { font-size:28px; flex-shrink:0; }
+.pf-title  { font-family:var(--font-display); font-size:15px; font-weight:800; color:var(--text); margin-bottom:2px; }
+.pf-desc   { font-size:12px; color:var(--text3); line-height:1.5; }
+
+.pf-footer { display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+
+.pf-cost   { font-family:var(--font-display); font-size:14px; font-weight:800; color:var(--gold); }
+.pf-cost.free { color:var(--up); }
+
+.pf-unlock-btn {
+  padding:6px 14px; border-radius:8px; font-size:12px; font-weight:800;
+  font-family:var(--font-display); cursor:pointer; border:none; transition:all .15s;
+}
+
+.pf-unlock-btn.buy  { background:var(--gold); color:#07090d; }
+.pf-unlock-btn.buy:hover { background:#e08a0a; }
+.pf-unlock-btn.owned { background:var(--up-dim); color:var(--up); border:1px solid rgba(34,197,94,.3); cursor:default; }
+.pf-unlock-btn.nav  { background:var(--accent-dim); color:var(--accent); border:1px solid rgba(34,211,238,.2); text-decoration:none; display:inline-block; }
+.pf-unlock-btn.nav:hover { background:rgba(34,211,238,.18); }
+
+.pf-lock-overlay {
+  position:absolute; top:10px; right:10px;
+  font-size:16px; color:var(--text3); opacity:.6;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Hero -->
+  <div class="store-hero">
+    <div style="font-size:48px;margin-bottom:12px;">🪙</div>
+    <div class="store-hero-title">Get Chips</div>
+    <p class="store-hero-sub">
+      Chips are BrickStocks' premium currency. Use them to enter leagues, unlock features, and flex your status.
+    </p>
+    <div class="chips-balance">
+      🪙 <span id="my-chips">—</span> Chips
+    </div>
+  </div>
+
+  <!-- Packages -->
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">💰 Chips Packages</div>
+    <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);">Real value = same as USD</div>
+  </div>
+
+  <div class="packages-grid">
+
+    <div class="package-card">
+      <div class="package-icon">🌱</div>
+      <div class="package-chips">100</div>
+      <div class="package-bonus">&nbsp;</div>
+      <div class="package-price">$1.00</div>
+      <div class="package-per">$0.01 per Chip</div>
+      <button class="package-buy-btn" onclick="buyChips(100, 1.00)">Buy</button>
+    </div>
+
+    <div class="package-card">
+      <div class="package-icon">💎</div>
+      <div class="package-chips">500</div>
+      <div class="package-bonus">+50 bonus</div>
+      <div class="package-price">$5.00</div>
+      <div class="package-per">$0.0091 per Chip</div>
+      <button class="package-buy-btn" onclick="buyChips(550, 5.00)">Buy</button>
+    </div>
+
+    <div class="package-card popular">
+      <div class="package-badge popular">⭐ Most Popular</div>
+      <div class="package-icon">🏆</div>
+      <div class="package-chips">1,000</div>
+      <div class="package-bonus">+150 bonus</div>
+      <div class="package-price">$10.00</div>
+      <div class="package-per">$0.0087 per Chip</div>
+      <button class="package-buy-btn" onclick="buyChips(1150, 10.00)">Buy Now</button>
+    </div>
+
+    <div class="package-card best-value">
+      <div class="package-badge best-value">🔥 Best Value</div>
+      <div class="package-icon">🚀</div>
+      <div class="package-chips">5,000</div>
+      <div class="package-bonus">+1,000 bonus</div>
+      <div class="package-price">$40.00</div>
+      <div class="package-per">$0.0067 per Chip</div>
+      <button class="package-buy-btn" onclick="buyChips(6000, 40.00)">Buy Now</button>
+    </div>
+
+  </div>
+
+  <!-- Free chips -->
+  <div class="card" style="margin-bottom:32px;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">🎁 Earn Free Chips</div>
+    </div>
+    <div class="free-chips-grid">
+      <a class="free-chip-card" href="/challenges.html">
+        <div class="fcc-icon">⚡</div>
+        <div class="fcc-info">
+          <div class="fcc-title">Daily Challenges</div>
+          <div class="fcc-desc">Complete trading challenges every day</div>
+        </div>
+        <div class="fcc-chips">+10–500 🪙</div>
+      </a>
+      <a class="free-chip-card" href="/league.html">
+        <div class="fcc-icon">🏆</div>
+        <div class="fcc-info">
+          <div class="fcc-title">Win Leagues</div>
+          <div class="fcc-desc">Top league performers earn big prizes</div>
+        </div>
+        <div class="fcc-chips">+100–500 🪙</div>
+      </a>
+      <a class="free-chip-card" href="/profile.html">
+        <div class="fcc-icon">👥</div>
+        <div class="fcc-info">
+          <div class="fcc-title">Refer Friends</div>
+          <div class="fcc-desc">Get 50 Chips for every friend who joins</div>
+        </div>
+        <div class="fcc-chips">+50 🪙</div>
+      </a>
+      <a class="free-chip-card" href="/leaderboard.html">
+        <div class="fcc-icon">🏅</div>
+        <div class="fcc-info">
+          <div class="fcc-title">Weekly Rankings</div>
+          <div class="fcc-desc">Top 10 on the global leaderboard earns Chips</div>
+        </div>
+        <div class="fcc-chips">+25 🪙</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- What Chips are for -->
+  <div class="card">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">🪙 What Are Chips For?</div>
+    </div>
+    <div class="chips-usage-grid">
+      <div class="cu-item">
+        <div class="cu-icon">🏆</div>
+        <div>
+          <div class="cu-title">League Entry</div>
+          <div class="cu-desc">Premium leagues with bigger prize pools require Chips to enter.</div>
+        </div>
+      </div>
+      <div class="cu-item">
+        <div class="cu-icon">⭐</div>
+        <div>
+          <div class="cu-title">Premium Status</div>
+          <div class="cu-desc">Display your Chip balance on your profile as a badge of honor.</div>
+        </div>
+      </div>
+      <div class="cu-item">
+        <div class="cu-icon">🎁</div>
+        <div>
+          <div class="cu-title">Send to Friends</div>
+          <div class="cu-desc">Gift Chips to friends to celebrate big wins or friendly competition.</div>
+        </div>
+      </div>
+      <div class="cu-item">
+        <div class="cu-icon">🔓</div>
+        <div>
+          <div class="cu-title">Unlock Features</div>
+          <div class="cu-desc">AI Signals access, extended research data, and more — unlocked with Chips.</div>
+        </div>
+      </div>
+      <div class="cu-item">
+        <div class="cu-icon">🏅</div>
+        <div>
+          <div class="cu-title">Tier Upgrades</div>
+          <div class="cu-desc">Progress through Rookie → Trader → Analyst → Expert → Legend tiers.</div>
+        </div>
+      </div>
+      <div class="cu-item">
+        <div class="cu-icon">📊</div>
+        <div>
+          <div class="cu-title">Trading Capital</div>
+          <div class="cu-desc">Future: convert Chips to extra virtual trading capital in special leagues.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Premium Features ──────────────────────────────────────── -->
+  <div class="card" style="margin-top:32px;">
+    <div class="card-header" style="margin-bottom:6px;">
+      <div class="card-title">🔓 Premium Features</div>
+      <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);">Unlock with Chips</div>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+      Use your Chips to unlock advanced tools — AI trade signals, deep research data, extended league access, and custom analytics.
+    </p>
+    <div id="premium-features-grid"></div>
+  </div>
+
+  <!-- ── Gift Chips ────────────────────────────────────────────── -->
+  <div class="card" style="margin-top:24px;margin-bottom:40px;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">🎁 Gift Chips to a Friend</div>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+      Celebrate a friend's big win, or just share the love. Send Chips instantly to any BrickStocks user.
+    </p>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Recipient username</div>
+        <input id="gift-user" type="text" placeholder="@username"
+          style="width:100%;padding:11px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;outline:none;font-family:var(--font-body);"
+          onfocus="this.style.borderColor='var(--border2)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+      <div style="min-width:120px;">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Amount</div>
+        <select id="gift-amount"
+          style="width:100%;padding:11px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;outline:none;cursor:pointer;">
+          <option value="10">10 🪙</option>
+          <option value="25">25 🪙</option>
+          <option value="50" selected>50 🪙</option>
+          <option value="100">100 🪙</option>
+          <option value="250">250 🪙</option>
+          <option value="500">500 🪙</option>
+        </select>
+      </div>
+      <button onclick="sendGift()" class="btn btn-primary" style="white-space:nowrap;padding:11px 20px;">
+        Send Gift 🎁
+      </button>
+    </div>
+    <div id="gift-status" style="margin-top:10px;font-size:12px;color:var(--text3);"></div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Purchase modal (demo) -->
+<div class="modal-overlay" id="purchase-modal">
+  <div class="modal">
+    <button class="modal-close" id="purchase-close">✕</button>
+    <div style="text-align:center;font-size:40px;margin-bottom:12px;">🪙</div>
+    <div class="modal-title" style="text-align:center;" id="purchase-title">Confirm Purchase</div>
+    <div class="modal-sub" style="text-align:center;" id="purchase-sub">You are about to purchase Chips.</div>
+    <div style="background:var(--bg4);border-radius:12px;padding:16px;margin-bottom:20px;" id="purchase-details"></div>
+    <div style="background:var(--gold-dim);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--gold);">
+      ℹ️ This is a simulated purchase for demo purposes. In production, real payment processing (Stripe) would be integrated here.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" id="purchase-cancel">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;" id="purchase-confirm">Confirm (Demo)</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let pendingPurchase = null;
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = (user, profile) => {
+  document.getElementById('my-chips').textContent = (profile.chips || 0).toLocaleString();
+};
+
+function buyChips(chips, price) {
+  if (!window.BSAuth?.getUser()) { window.BSAuth?.open(); return; }
+  pendingPurchase = { chips, price };
+
+  document.getElementById('purchase-title').textContent = `Buy ${chips.toLocaleString()} Chips`;
+  document.getElementById('purchase-sub').textContent = `Confirm your Chips purchase below.`;
+  document.getElementById('purchase-details').innerHTML = `
+    <div class="order-sum-row" style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);padding:4px 0;color:var(--text2);">
+      <span>Chips</span><span style="font-weight:700;color:var(--gold);">${chips.toLocaleString()} 🪙</span>
+    </div>
+    <div class="order-sum-row" style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);padding:4px 0;color:var(--text2);">
+      <span>Price</span><span style="font-weight:700;">$${price.toFixed(2)} USD</span>
+    </div>`;
+
+  const modal = document.getElementById('purchase-modal');
+  modal.classList.add('visible');
+  requestAnimationFrame(() => modal.classList.add('open'));
+}
+
+function closePurchaseModal() {
+  const modal = document.getElementById('purchase-modal');
+  modal.classList.remove('open');
+  modal.addEventListener('transitionend', () => modal.classList.remove('visible'), { once: true });
+}
+
+document.getElementById('purchase-close').addEventListener('click', closePurchaseModal);
+document.getElementById('purchase-cancel').addEventListener('click', closePurchaseModal);
+document.getElementById('purchase-modal').addEventListener('click', e => { if (e.target === document.getElementById('purchase-modal')) closePurchaseModal(); });
+
+document.getElementById('purchase-confirm').addEventListener('click', async () => {
+  if (!pendingPurchase) return;
+  const btn = document.getElementById('purchase-confirm');
+  btn.disabled = true; btn.textContent = 'Processing…';
+
+  // Demo: just add chips directly
+  const userId = window.BSAuth?.getUser()?.id;
+  if (userId) {
+    await _db.rpc('add_chips', { p_user_id: userId, p_amount: pendingPurchase.chips });
+    const profile = await window.BSAuth?.refreshProfile();
+    document.getElementById('my-chips').textContent = (profile?.chips || 0).toLocaleString();
+  }
+
+  btn.disabled = false;
+  closePurchaseModal();
+  BSAuth.toast(`🎉 ${pendingPurchase.chips.toLocaleString()} Chips added to your account!`, 'success');
+  pendingPurchase = null;
+});
+
+/* ── Premium features ──────────────────────────────────── */
+const PREMIUM_FEATURES = [
+  {
+    id: 'ai_signals_basic',
+    icon: '🤖', title: 'AI Trade Signals — Basic',
+    desc: 'Get 5 AI-generated BUY/SELL/HOLD signals per day across stocks and crypto, with confidence scores.',
+    cost: 0, costLabel: 'Free', href: '/agent.html', owned: true
+  },
+  {
+    id: 'ai_signals_pro',
+    icon: '🧠', title: 'AI Trade Signals — Pro',
+    desc: 'Unlimited daily signals with full reasoning breakdowns, RSI/MACD/sentiment analysis, and entry targets.',
+    cost: 200, costLabel: '200 🪙 / week', href: null, owned: false
+  },
+  {
+    id: 'research_extended',
+    icon: '🔬', title: 'Extended Research Data',
+    desc: 'Analyst price targets, earnings transcripts, insider trades, institutional holdings, and sector flow data.',
+    cost: 150, costLabel: '150 🪙 / week', href: null, owned: false
+  },
+  {
+    id: 'watchlist_alerts',
+    icon: '🔔', title: 'Live Price Alerts',
+    desc: 'Real-time browser & email alerts when watchlist assets hit your target price. Supports up to 20 active alerts.',
+    cost: 0, costLabel: 'Free', href: '/watchlist.html', owned: true
+  },
+  {
+    id: 'macro_calendar',
+    icon: '📅', title: 'Macro Events Calendar',
+    desc: 'Earnings dates, Fed meetings, CPI/PPI reports, and key economic events — auto-synced with market impact scores.',
+    cost: 100, costLabel: '100 🪙 / month', href: null, owned: false
+  },
+  {
+    id: 'league_pro',
+    icon: '🏆', title: 'Pro League Entry',
+    desc: 'Access to private high-stakes leagues with bigger starting capital ($50K) and Chip prize pools.',
+    cost: 500, costLabel: '500 🪙 / entry', href: '/league.html', owned: false
+  },
+  {
+    id: 'portfolio_analytics',
+    icon: '📊', title: 'Advanced Portfolio Analytics',
+    desc: 'Sharpe ratio, max drawdown, correlation matrix, sector exposure chart, and daily P&L breakdown.',
+    cost: 250, costLabel: '250 🪙 / month', href: null, owned: false
+  },
+  {
+    id: 'screener',
+    icon: '🔍', title: 'Stock Screener',
+    desc: 'Filter 5,000+ stocks by P/E ratio, revenue growth, RSI, 52-week range, earnings surprise, and more.',
+    cost: 300, costLabel: '300 🪙 / month', href: null, owned: false
+  },
+];
+
+function renderPremiumFeatures(userChips) {
+  const grid = document.getElementById('premium-features-grid');
+  grid.className = 'pf-grid';
+  grid.innerHTML = PREMIUM_FEATURES.map(f => {
+    const canAfford = f.owned || userChips >= f.cost;
+    const actionBtn = f.owned
+      ? `<a href="${f.href}" class="pf-unlock-btn nav">Open →</a>`
+      : (canAfford
+          ? `<button class="pf-unlock-btn buy" onclick="unlockFeature('${f.id}', ${f.cost}, this)">Unlock</button>`
+          : `<button class="pf-unlock-btn buy" style="opacity:.5;cursor:not-allowed;" disabled title="Not enough Chips">Unlock</button>`);
+    return `
+      <div class="pf-card ${f.owned ? 'unlocked' : 'locked-card'}">
+        ${!f.owned ? '<div class="pf-lock-overlay">🔒</div>' : '<div class="pf-lock-overlay" style="color:var(--up);opacity:.9;">✓</div>'}
+        <div class="pf-header">
+          <div class="pf-icon">${f.icon}</div>
+          <div>
+            <div class="pf-title">${f.title}</div>
+            <div class="pf-desc">${f.desc}</div>
+          </div>
+        </div>
+        <div class="pf-footer">
+          <div class="pf-cost ${f.owned ? 'free' : ''}">${f.owned ? '✅ Active' : f.costLabel}</div>
+          ${actionBtn}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function unlockFeature(featureId, cost, btn) {
+  const userId = window.BSAuth?.getUser()?.id;
+  if (!userId) { window.BSAuth?.open(); return; }
+  if (cost <= 0) return;
+
+  const curChips = parseInt(document.getElementById('my-chips').textContent.replace(/,/g,'')) || 0;
+  if (curChips < cost) { BSAuth.toast('Not enough Chips!', 'warning'); return; }
+
+  btn.disabled = true; btn.textContent = 'Unlocking…';
+  try {
+    await _db.rpc('add_chips', { p_user_id: userId, p_amount: -cost });
+    const profile = await window.BSAuth?.refreshProfile();
+    document.getElementById('my-chips').textContent = (profile?.chips || 0).toLocaleString();
+    BSAuth.toast(`🔓 Feature unlocked!`, 'success');
+    renderPremiumFeatures(profile?.chips || 0);
+  } catch {
+    btn.disabled = false; btn.textContent = 'Unlock';
+    BSAuth.toast('Something went wrong', 'warning');
+  }
+}
+
+/* ── Gift chips ────────────────────────────────────────── */
+async function sendGift() {
+  const userId = window.BSAuth?.getUser()?.id;
+  if (!userId) { window.BSAuth?.open(); return; }
+  const toUser = document.getElementById('gift-user').value.trim().replace(/^@/,'');
+  const amount = parseInt(document.getElementById('gift-amount').value);
+  const status = document.getElementById('gift-status');
+
+  if (!toUser) { status.textContent = '⚠️ Enter a username'; status.style.color='var(--gold)'; return; }
+  if (!amount) return;
+
+  const curChips = parseInt(document.getElementById('my-chips').textContent.replace(/,/g,'')) || 0;
+  if (curChips < amount) { status.textContent = '⚠️ Not enough Chips'; status.style.color='var(--dn)'; return; }
+
+  status.textContent = 'Sending…'; status.style.color = 'var(--text3)';
+  try {
+    // Find recipient
+    const { data: rec } = await _db.from('profiles').select('id,display_name').eq('username', toUser).single();
+    if (!rec) { status.textContent = `⚠️ User @${toUser} not found`; status.style.color='var(--dn)'; return; }
+    // Deduct from sender, add to recipient
+    await Promise.all([
+      _db.rpc('add_chips', { p_user_id: userId,  p_amount: -amount }),
+      _db.rpc('add_chips', { p_user_id: rec.id, p_amount: amount }),
+    ]);
+    const profile = await window.BSAuth?.refreshProfile();
+    document.getElementById('my-chips').textContent = (profile?.chips || 0).toLocaleString();
+    document.getElementById('gift-user').value = '';
+    status.textContent = `✅ ${amount} Chips sent to ${rec.display_name || toUser}!`;
+    status.style.color = 'var(--up)';
+    BSAuth.toast(`🎁 ${amount} Chips gifted to @${toUser}!`, 'success');
+  } catch {
+    status.textContent = '⚠️ Gift failed — try again'; status.style.color='var(--dn)';
+  }
+}
+
+/* Boot */
+window.BSAuth = window.BSAuth || {};
+const _origReady = window.BSAuth.onReady;
+window.BSAuth.onReady = (user, profile) => {
+  if (_origReady) _origReady(user, profile);
+  document.getElementById('my-chips').textContent = (profile.chips || 0).toLocaleString();
+  renderPremiumFeatures(profile.chips || 0);
+};
+
+// Render locked state for unauthenticated visitors
+setTimeout(() => {
+  if (!window.BSAuth?.getUser()) renderPremiumFeatures(0);
+}, 1500);
+</script>
+</body>
+</html>

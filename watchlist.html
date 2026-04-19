@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Watchlist · BrickStocks</title>
+<meta name="description" content="Track your favorite stocks, cryptos, and forex pairs with real-time price data and alerts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+.wl-hero { padding: 32px 0 20px; display:flex; align-items:center; gap:14px; }
+.wl-hero-icon { font-size:40px; }
+.wl-hero-title { font-family:var(--font-display); font-size:28px; font-weight:800; letter-spacing:-1px; color:var(--text); margin-bottom:2px; }
+.wl-hero-sub   { font-size:13px; color:var(--text2); }
+
+/* Stats strip */
+.wl-stats { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.wl-stat  { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:12px 18px; flex:1; min-width:90px; }
+.wl-stat-val { font-family:var(--font-display); font-size:22px; font-weight:800; letter-spacing:-0.5px; color:var(--text); }
+.wl-stat-lbl { font-family:var(--font-mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+
+/* Add bar */
+.wl-add-bar  { display:flex; gap:10px; margin-bottom:18px; }
+.wl-add-wrap { flex:1; max-width:440px; position:relative; }
+.wl-add-input {
+  width:100%; padding:11px 16px 11px 40px;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:var(--radius); color:var(--text);
+  font-size:14px; font-family:var(--font-body); outline:none;
+  transition:border-color .15s;
+}
+.wl-add-input:focus { border-color:var(--border2); }
+.wl-add-input::placeholder { color:var(--text3); }
+.wl-add-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; font-size:14px; }
+.wl-add-btn {
+  padding:11px 20px; background:var(--accent); color:#07090d;
+  border:none; border-radius:var(--radius); cursor:pointer;
+  font-family:var(--font-display); font-size:14px; font-weight:800;
+  transition:background .15s; white-space:nowrap;
+}
+.wl-add-btn:hover { background:var(--accent2); }
+
+/* Autocomplete */
+.wl-ac {
+  position:absolute; top:calc(100% + 6px); left:0; right:0;
+  background:var(--bg4); border:1px solid var(--border2);
+  border-radius:var(--radius-lg); overflow:hidden; z-index:200;
+  box-shadow:var(--shadow-lg); display:none;
+}
+.wl-ac.open { display:block; }
+.wl-ac-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; cursor:pointer; transition:background .1s;
+  border-bottom:1px solid var(--border);
+}
+.wl-ac-item:last-child { border-bottom:none; }
+.wl-ac-item:hover { background:var(--bg5); }
+.wl-ac-sym  { font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--text); min-width:64px; }
+.wl-ac-name { font-size:12px; color:var(--text2); flex:1; }
+.wl-ac-type { font-family:var(--font-mono); font-size:9px; font-weight:600; padding:2px 7px; border-radius:4px; text-transform:uppercase; }
+.wl-ac-type.stock  { background:var(--accent-dim); color:var(--accent); }
+.wl-ac-type.crypto { background:var(--gold-dim);   color:var(--gold);   }
+.wl-ac-type.forex  { background:var(--purple-dim); color:var(--purple); }
+
+/* Controls */
+.wl-controls { display:flex; align-items:center; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+.wl-sort-lbl { font-family:var(--font-mono); font-size:11px; color:var(--text3); margin-right:2px; }
+.wl-pill {
+  padding:6px 13px; border-radius:20px; font-size:12px; font-weight:700;
+  cursor:pointer; border:1px solid var(--border); background:none;
+  color:var(--text3); font-family:var(--font-display); transition:all .15s;
+}
+.wl-pill:hover { color:var(--text); border-color:var(--border2); }
+.wl-pill.active { background:var(--accent-dim); color:var(--accent); border-color:rgba(34,211,238,.3); }
+.wl-pill.type-crypto.active { background:var(--gold-dim);   color:var(--gold);   border-color:rgba(245,158,11,.3); }
+.wl-pill.type-forex.active  { background:var(--purple-dim); color:var(--purple); border-color:rgba(167,139,250,.3); }
+.wl-divider { width:1px; height:18px; background:var(--border); margin:0 2px; }
+.wl-view-toggle { display:flex; gap:4px; margin-left:auto; }
+.wl-view-btn {
+  width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+  background:none; color:var(--text3); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; transition:all .15s;
+}
+.wl-view-btn.active { background:var(--bg4); color:var(--text); border-color:var(--border2); }
+
+/* Type badge */
+.wl-type { font-family:var(--font-mono); font-size:9px; font-weight:600; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.04em; }
+.wl-type.stock  { background:var(--accent-dim); color:var(--accent); }
+.wl-type.crypto { background:var(--gold-dim);   color:var(--gold);   }
+.wl-type.forex  { background:var(--purple-dim); color:var(--purple); }
+
+/* Row view */
+.wl-row {
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:14px 18px;
+  margin-bottom:10px; display:flex; align-items:center; gap:14px;
+  transition:border-color .15s, box-shadow .15s;
+  animation:wlIn .22s ease both;
+}
+.wl-row:hover { border-color:var(--border2); box-shadow:0 4px 16px rgba(0,0,0,.25); }
+@keyframes wlIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+.wl-sym-wrap { min-width:96px; display:flex; flex-direction:column; gap:3px; }
+.wl-sym  { font-family:var(--font-display); font-size:16px; font-weight:800; color:var(--text); }
+.wl-name { font-size:11px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; }
+
+.wl-price-col { text-align:right; min-width:90px; }
+.wl-price { font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--text); }
+.wl-chg   { font-family:var(--font-mono); font-size:11px; font-weight:600; margin-top:2px; }
+.wl-chg.up { color:var(--up); } .wl-chg.dn { color:var(--dn); } .wl-chg.flat { color:var(--text3); }
+
+.wl-meta { flex:1; display:flex; gap:20px; padding:0 8px; }
+.wl-meta-item {}
+.wl-meta-val { font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--text2); }
+.wl-meta-lbl { font-size:10px; color:var(--text3); font-family:var(--font-mono); margin-top:1px; }
+
+.wl-actions { display:flex; gap:6px; align-items:center; margin-left:auto; }
+.wl-act-btn {
+  width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg4); color:var(--text3); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; transition:all .15s;
+}
+.wl-act-btn:hover              { color:var(--text); border-color:var(--border2); }
+.wl-act-btn.alerted            { color:var(--gold); border-color:rgba(245,158,11,.3); background:var(--gold-dim); }
+.wl-act-btn.rm:hover           { color:var(--dn);   border-color:rgba(239,68,68,.3); background:var(--dn-dim); }
+
+.wl-trade-lnk {
+  padding:7px 13px; border-radius:8px; font-size:12px; font-weight:800;
+  font-family:var(--font-display); background:var(--accent-dim); color:var(--accent);
+  border:1px solid rgba(34,211,238,.2); cursor:pointer; text-decoration:none;
+  transition:all .15s; white-space:nowrap;
+}
+.wl-trade-lnk:hover { background:rgba(34,211,238,.18); }
+
+/* Grid view */
+.wl-grid-wrap { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:12px; }
+.wl-gc {
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:var(--radius-xl); padding:18px 20px;
+  transition:border-color .15s, transform .15s, box-shadow .15s;
+  animation:wlIn .22s ease both;
+}
+.wl-gc:hover { border-color:var(--border2); transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,.3); }
+.wl-gc-top    { display:flex; justify-content:space-between; margin-bottom:12px; }
+.wl-gc-sym    { font-family:var(--font-display); font-size:18px; font-weight:800; color:var(--text); margin-bottom:2px; }
+.wl-gc-name   { font-size:11px; color:var(--text3); margin-bottom:5px; }
+.wl-gc-price  { font-family:var(--font-display); font-size:17px; font-weight:700; color:var(--text); text-align:right; margin-bottom:4px; }
+.wl-gc-badge  { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; white-space:nowrap; }
+.wl-gc-badge.up   { background:var(--up-dim); color:var(--up); }
+.wl-gc-badge.dn   { background:var(--dn-dim); color:var(--dn); }
+.wl-gc-badge.flat { background:var(--bg4);    color:var(--text3); }
+.wl-gc-footer { display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid var(--border); margin-top:12px; }
+
+/* Empty state */
+.wl-empty { text-align:center; padding:56px 20px; }
+.wl-empty-icon  { font-size:52px; margin-bottom:14px; }
+.wl-empty-title { font-family:var(--font-display); font-size:20px; font-weight:800; color:var(--text); margin-bottom:8px; }
+.wl-empty-sub   { font-size:13px; color:var(--text2); max-width:340px; margin:0 auto 20px; line-height:1.6; }
+.wl-empty-pills { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+/* Alert modal extras */
+.alert-dir-tabs { display:flex; gap:8px; margin-bottom:14px; }
+.alert-dir-btn {
+  flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg4); color:var(--text3); font-family:var(--font-display);
+  font-size:13px; font-weight:700; cursor:pointer; transition:all .15s;
+}
+.alert-dir-btn.active.above { background:var(--up-dim);  color:var(--up);  border-color:rgba(34,197,94,.3);  }
+.alert-dir-btn.active.below { background:var(--dn-dim);  color:var(--dn);  border-color:rgba(239,68,68,.3);  }
+.alert-inp-wrap { display:flex; align-items:center; background:var(--bg4); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px; }
+.alert-inp-pfx  { padding:12px 14px; font-family:var(--font-mono); font-size:14px; color:var(--text3); background:var(--bg5); border-right:1px solid var(--border); }
+.alert-inp      { flex:1; padding:12px 14px; background:none; border:none; color:var(--text); font-size:15px; font-family:var(--font-mono); font-weight:600; outline:none; }
+.alert-note     { font-size:11px; color:var(--text3); margin-bottom:18px; line-height:1.5; }
+
+/* Refresh spin */
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinning { animation:spin .9s linear infinite; display:inline-block; }
+
+/* Responsive */
+@media(max-width:768px) { .wl-meta{display:none;} .wl-row{gap:10px;} }
+@media(max-width:480px) { .wl-row svg{display:none;} .wl-grid-wrap{grid-template-columns:1fr 1fr;} .wl-hero{gap:10px;} }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html" class="active"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Hero -->
+  <div class="wl-hero">
+    <div class="wl-hero-icon">👁️</div>
+    <div>
+      <div class="wl-hero-title">My Watchlist</div>
+      <div class="wl-hero-sub">Track assets. Set alerts. Never miss a move.</div>
+    </div>
+    <button class="wl-act-btn" id="refresh-btn" title="Refresh prices" style="margin-left:auto;width:36px;height:36px;" onclick="refreshPrices()">⟳</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="wl-stats">
+    <div class="wl-stat">
+      <div class="wl-stat-val" id="stat-count">0</div>
+      <div class="wl-stat-lbl">Watching</div>
+    </div>
+    <div class="wl-stat">
+      <div class="wl-stat-val" style="color:var(--up);" id="stat-gainers">0</div>
+      <div class="wl-stat-lbl">Gainers</div>
+    </div>
+    <div class="wl-stat">
+      <div class="wl-stat-val" style="color:var(--dn);" id="stat-losers">0</div>
+      <div class="wl-stat-lbl">Losers</div>
+    </div>
+    <div class="wl-stat">
+      <div class="wl-stat-val" id="stat-avg">—</div>
+      <div class="wl-stat-lbl">Avg Change</div>
+    </div>
+  </div>
+
+  <!-- Add bar -->
+  <div class="wl-add-bar">
+    <div class="wl-add-wrap">
+      <span class="wl-add-icon">🔍</span>
+      <input class="wl-add-input" id="wl-search" type="text"
+        placeholder="Search symbol — AAPL, BTC, EURUSD…" autocomplete="off"/>
+      <div class="wl-ac" id="wl-ac"></div>
+    </div>
+    <button class="wl-add-btn" onclick="addFromInput()">+ Add</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="wl-controls">
+    <span class="wl-sort-lbl">Sort:</span>
+    <button class="wl-pill active" data-sort="added"  onclick="setSort(this,'added')">Recent</button>
+    <button class="wl-pill"        data-sort="change" onclick="setSort(this,'change')">Change</button>
+    <button class="wl-pill"        data-sort="price"  onclick="setSort(this,'price')">Price</button>
+    <button class="wl-pill"        data-sort="name"   onclick="setSort(this,'name')">A–Z</button>
+    <div class="wl-divider"></div>
+    <button class="wl-pill active"      data-type="all"    onclick="setType(this,'all')">All</button>
+    <button class="wl-pill type-stock"  data-type="stock"  onclick="setType(this,'stock')">Stocks</button>
+    <button class="wl-pill type-crypto" data-type="crypto" onclick="setType(this,'crypto')">Crypto</button>
+    <button class="wl-pill type-forex"  data-type="forex"  onclick="setType(this,'forex')">Forex</button>
+    <div class="wl-view-toggle">
+      <button class="wl-view-btn active" id="vbtn-rows" title="List view" onclick="setView('rows')">☰</button>
+      <button class="wl-view-btn"        id="vbtn-grid" title="Grid view" onclick="setView('grid')">⊞</button>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div id="wl-list"></div>
+
+  <!-- Empty -->
+  <div class="wl-empty" id="wl-empty" style="display:none;">
+    <div class="wl-empty-icon">👁️</div>
+    <div class="wl-empty-title">Nothing here yet</div>
+    <div class="wl-empty-sub">Search for any stock, crypto, or forex pair and add it to start tracking prices and setting price alerts.</div>
+    <div class="wl-empty-pills">
+      <button class="btn btn-outline" onclick="quickAdd('AAPL')">+ AAPL</button>
+      <button class="btn btn-outline" onclick="quickAdd('NVDA')">+ NVDA</button>
+      <button class="btn btn-outline" onclick="quickAdd('BTC')">+ BTC</button>
+      <button class="btn btn-outline" onclick="quickAdd('ETH')">+ ETH</button>
+      <button class="btn btn-outline" onclick="quickAdd('TSLA')">+ TSLA</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Alert modal -->
+<div class="modal-overlay" id="alert-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAlert()">✕</button>
+    <div class="modal-title">🔔 Price Alert</div>
+    <div class="modal-sub" style="margin-bottom:18px;">Get notified when the price hits your target.</div>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg4);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;">
+      <span id="al-sym"  style="font-family:var(--font-display);font-size:17px;font-weight:800;"></span>
+      <span id="al-name" style="font-size:12px;color:var(--text3);flex:1;"></span>
+      <span id="al-cur"  style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text2);"></span>
+    </div>
+    <div class="alert-dir-tabs">
+      <button class="alert-dir-btn active above" id="adir-above" onclick="setAlertDir('above')">↑ Price goes above</button>
+      <button class="alert-dir-btn below"         id="adir-below" onclick="setAlertDir('below')">↓ Price goes below</button>
+    </div>
+    <div class="alert-inp-wrap">
+      <div class="alert-inp-pfx">$</div>
+      <input class="alert-inp" id="al-val" type="number" step="0.01" placeholder="0.00"/>
+    </div>
+    <div class="alert-note">⚡ Alerts are checked every 60 s while this page is open. In production, push notifications or email would fire server-side.</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeAlert()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="saveAlert()">Set Alert</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   BrickStocks — Watchlist
+   Persists to localStorage. Fetches live quotes from
+   the BrickStocks API; falls back to demo data.
+   ═══════════════════════════════════════════════════════ */
+
+const WL_KEY  = 'bs_watchlist_v2';
+const ALT_KEY = 'bs_wl_alerts_v1';
+
+/* ── Symbol catalogue ────────────────────────────────── */
+const CATALOGUE = [
+  {symbol:'AAPL',   name:'Apple Inc.',               type:'stock'},
+  {symbol:'NVDA',   name:'NVIDIA Corp.',              type:'stock'},
+  {symbol:'MSFT',   name:'Microsoft Corp.',           type:'stock'},
+  {symbol:'GOOGL',  name:'Alphabet Inc.',             type:'stock'},
+  {symbol:'AMZN',   name:'Amazon.com Inc.',           type:'stock'},
+  {symbol:'META',   name:'Meta Platforms Inc.',       type:'stock'},
+  {symbol:'TSLA',   name:'Tesla Inc.',                type:'stock'},
+  {symbol:'JPM',    name:'JPMorgan Chase & Co.',      type:'stock'},
+  {symbol:'V',      name:'Visa Inc.',                 type:'stock'},
+  {symbol:'NFLX',   name:'Netflix Inc.',              type:'stock'},
+  {symbol:'AMD',    name:'Advanced Micro Devices',    type:'stock'},
+  {symbol:'COIN',   name:'Coinbase Global Inc.',      type:'stock'},
+  {symbol:'INTC',   name:'Intel Corp.',               type:'stock'},
+  {symbol:'DIS',    name:'The Walt Disney Co.',       type:'stock'},
+  {symbol:'PYPL',   name:'PayPal Holdings Inc.',      type:'stock'},
+  {symbol:'BAC',    name:'Bank of America Corp.',     type:'stock'},
+  {symbol:'XOM',    name:'Exxon Mobil Corp.',         type:'stock'},
+  {symbol:'WMT',    name:'Walmart Inc.',              type:'stock'},
+  {symbol:'UNH',    name:'UnitedHealth Group',        type:'stock'},
+  {symbol:'JNJ',    name:'Johnson & Johnson',         type:'stock'},
+  {symbol:'BTC',    name:'Bitcoin',                   type:'crypto'},
+  {symbol:'ETH',    name:'Ethereum',                  type:'crypto'},
+  {symbol:'SOL',    name:'Solana',                    type:'crypto'},
+  {symbol:'BNB',    name:'BNB',                       type:'crypto'},
+  {symbol:'XRP',    name:'XRP',                       type:'crypto'},
+  {symbol:'DOGE',   name:'Dogecoin',                  type:'crypto'},
+  {symbol:'ADA',    name:'Cardano',                   type:'crypto'},
+  {symbol:'AVAX',   name:'Avalanche',                 type:'crypto'},
+  {symbol:'LINK',   name:'Chainlink',                 type:'crypto'},
+  {symbol:'DOT',    name:'Polkadot',                  type:'crypto'},
+  {symbol:'EURUSD', name:'Euro / US Dollar',          type:'forex'},
+  {symbol:'GBPUSD', name:'British Pound / USD',       type:'forex'},
+  {symbol:'USDJPY', name:'US Dollar / Japanese Yen',  type:'forex'},
+  {symbol:'AUDUSD', name:'Australian Dollar / USD',   type:'forex'},
+  {symbol:'USDCAD', name:'US Dollar / Canadian Dollar',type:'forex'},
+  {symbol:'USDCHF', name:'US Dollar / Swiss Franc',   type:'forex'},
+  {symbol:'NZDUSD', name:'New Zealand Dollar / USD',  type:'forex'},
+];
+
+/* ── Demo quotes fallback ────────────────────────────── */
+const DEMO = {
+  AAPL:   {price:189.45,  change:1.23,  vol:'52.3M', spark:[182,184,186,185,188,187,189]},
+  NVDA:   {price:875.40,  change:5.23,  vol:'41.8M', spark:[820,835,845,855,860,870,875]},
+  MSFT:   {price:415.20,  change:0.87,  vol:'18.2M', spark:[410,411,413,412,414,415,415]},
+  GOOGL:  {price:165.80,  change:-0.42, vol:'22.4M', spark:[168,167,166.5,167,166,166,166]},
+  AMZN:   {price:192.30,  change:2.14,  vol:'34.7M', spark:[186,187,189,188,190,192,192]},
+  META:   {price:543.60,  change:1.65,  vol:'12.1M', spark:[532,535,538,540,542,543,544]},
+  TSLA:   {price:247.80,  change:-2.14, vol:'98.1M', spark:[265,258,252,255,250,248,248]},
+  JPM:    {price:212.40,  change:0.34,  vol:'8.3M',  spark:[210,211,211.5,212,212,212,212]},
+  V:      {price:285.20,  change:0.55,  vol:'6.4M',  spark:[282,283,284,284,285,285,285]},
+  NFLX:   {price:628.70,  change:3.21,  vol:'4.8M',  spark:[605,608,615,618,622,626,629]},
+  AMD:    {price:172.30,  change:-1.23, vol:'28.4M', spark:[178,177,175,174,173,172.5,172]},
+  COIN:   {price:224.60,  change:4.12,  vol:'7.3M',  spark:[210,214,218,220,222,224,225]},
+  INTC:   {price:29.80,   change:-1.45, vol:'35.6M', spark:[31,30.5,30.2,30,29.9,29.8,30]},
+  DIS:    {price:94.50,   change:0.43,  vol:'11.2M', spark:[93,93.5,94,93.8,94.2,94.3,94.5]},
+  PYPL:   {price:68.20,   change:-0.87, vol:'16.4M', spark:[70,69.5,69,68.8,68.5,68.3,68]},
+  BAC:    {price:38.40,   change:1.05,  vol:'42.3M', spark:[37.8,38,38.1,38.2,38.3,38.4,38.4]},
+  XOM:    {price:118.60,  change:-0.55, vol:'14.2M', spark:[120,119.5,119,119,118.8,118.7,119]},
+  WMT:    {price:79.80,   change:0.12,  vol:'9.1M',  spark:[79,79.2,79.4,79.5,79.6,79.7,79.8]},
+  UNH:    {price:528.90,  change:-0.78, vol:'3.2M',  spark:[535,533,531,530,529,529,529]},
+  JNJ:    {price:158.40,  change:0.21,  vol:'5.8M',  spark:[157,157.5,158,157.8,158,158,158]},
+  BTC:    {price:67420,   change:3.45,  vol:'28.4B', spark:[62000,63500,65000,64200,66000,67000,67420]},
+  ETH:    {price:3180,    change:1.87,  vol:'14.2B', spark:[3050,3080,3120,3100,3150,3170,3180]},
+  SOL:    {price:182.40,  change:5.67,  vol:'3.8B',  spark:[165,170,175,178,180,182,182]},
+  BNB:    {price:592.30,  change:0.89,  vol:'1.2B',  spark:[585,587,589,590,591,592,592]},
+  XRP:    {price:0.5824,  change:2.34,  vol:'2.4B',  spark:[0.56,0.565,0.57,0.575,0.578,0.58,0.582]},
+  DOGE:   {price:0.1624,  change:-1.23, vol:'1.8B',  spark:[0.168,0.167,0.165,0.164,0.163,0.163,0.162]},
+  ADA:    {price:0.4532,  change:1.67,  vol:'820M',  spark:[0.440,0.444,0.448,0.450,0.452,0.453,0.453]},
+  AVAX:   {price:38.20,   change:4.23,  vol:'650M',  spark:[35,36,37,37.5,38,38.1,38.2]},
+  LINK:   {price:17.80,   change:2.87,  vol:'420M',  spark:[16.8,17.1,17.3,17.5,17.6,17.7,17.8]},
+  DOT:    {price:8.24,    change:-0.67, vol:'380M',  spark:[8.4,8.35,8.3,8.28,8.25,8.24,8.24]},
+  EURUSD: {price:1.0856,  change:0.12,  vol:'—',     spark:[1.082,1.083,1.084,1.085,1.085,1.086,1.086]},
+  GBPUSD: {price:1.2678,  change:-0.08, vol:'—',     spark:[1.270,1.269,1.268,1.268,1.268,1.267,1.268]},
+  USDJPY: {price:153.82,  change:0.21,  vol:'—',     spark:[153,153.2,153.4,153.5,153.7,153.8,153.82]},
+  AUDUSD: {price:0.6512,  change:-0.15, vol:'—',     spark:[0.654,0.653,0.652,0.652,0.651,0.651,0.651]},
+  USDCAD: {price:1.3645,  change:0.09,  vol:'—',     spark:[1.362,1.363,1.363,1.364,1.364,1.365,1.365]},
+  USDCHF: {price:0.9042,  change:-0.12, vol:'—',     spark:[0.906,0.905,0.905,0.904,0.904,0.904,0.904]},
+  NZDUSD: {price:0.5998,  change:0.07,  vol:'—',     spark:[0.598,0.598,0.599,0.599,0.600,0.600,0.600]},
+};
+
+/* ═══ STATE ════════════════════════════════════════════ */
+let watchlist = [];
+let quotes    = {};
+let alerts    = {};
+let sortBy    = 'added';
+let filterType= 'all';
+let viewMode  = 'rows';
+let alertSym  = null;
+let alertDir  = 'above';
+
+/* ═══ PERSIST ══════════════════════════════════════════ */
+function load() {
+  try { watchlist = JSON.parse(localStorage.getItem(WL_KEY)) || []; } catch { watchlist = []; }
+  try { alerts    = JSON.parse(localStorage.getItem(ALT_KEY)) || {}; } catch { alerts = {}; }
+}
+function save() {
+  localStorage.setItem(WL_KEY,  JSON.stringify(watchlist));
+  localStorage.setItem(ALT_KEY, JSON.stringify(alerts));
+}
+
+/* ═══ QUOTES ═══════════════════════════════════════════ */
+function demoQuote(sym) {
+  return DEMO[sym] || { price:null, change:0, vol:'—', spark:[] };
+}
+
+async function fetchLive(syms) {
+  const API = window.BS_API || 'https://brickstocks-api.onrender.com';
+  await Promise.allSettled(syms.map(async sym => {
+    try {
+      const type = (watchlist.find(w=>w.symbol===sym)||{}).type||'stock';
+      const r = await fetch(`${API}/market/quote?symbol=${encodeURIComponent(sym)}&type=${type}`,
+        { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw 0;
+      const d = await r.json();
+      if (d?.price) {
+        quotes[sym] = { price:d.price, change:d.change_pct||0, vol: d.volume ? fmtVol(d.volume) : '—',
+          spark: DEMO[sym]?.spark || jitter(d.price) };
+      }
+    } catch {}
+    if (!quotes[sym]) quotes[sym] = demoQuote(sym);
+  }));
+}
+
+function jitter(p) { return Array.from({length:7},(_,i)=>p*(1+(Math.random()-.5)*.02)); }
+function fmtVol(n) {
+  if (!n) return '—';
+  if (n>=1e12) return (n/1e12).toFixed(1)+'T';
+  if (n>=1e9)  return (n/1e9).toFixed(1)+'B';
+  if (n>=1e6)  return (n/1e6).toFixed(1)+'M';
+  if (n>=1e3)  return (n/1e3).toFixed(1)+'K';
+  return String(n);
+}
+function fmtPrice(p, type) {
+  if (p==null) return '—';
+  if ((type==='crypto'||type==='forex') && p<1) return '$'+p.toFixed(4);
+  if (type==='forex') return p.toFixed(4);
+  return '$'+p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+async function refreshPrices() {
+  if (!watchlist.length) return;
+  const btn = document.getElementById('refresh-btn');
+  btn.innerHTML = '<span class="spinning">⟳</span>';
+  await fetchLive(watchlist.map(w=>w.symbol));
+  render();
+  checkAlerts();
+  btn.innerHTML = '⟳';
+  wlToast('Prices refreshed','success');
+}
+
+/* ═══ ADD / REMOVE ══════════════════════════════════════ */
+function resolve(raw) {
+  const sym = raw.trim().toUpperCase().replace(/[^A-Z0-9/]/g,'');
+  if (!sym) return null;
+  const known = CATALOGUE.find(s=>s.symbol===sym);
+  if (known) return { ...known };
+  const cryptoList = ['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','LINK','DOT','MATIC','LTC','SHIB'];
+  if (cryptoList.includes(sym)) return {symbol:sym,name:sym,type:'crypto'};
+  if (/USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD/.test(sym)) return {symbol:sym,name:sym,type:'forex'};
+  return {symbol:sym,name:sym,type:'stock'};
+}
+
+async function addSymbol(sym) {
+  if (watchlist.find(w=>w.symbol===sym)) { wlToast(`${sym} is already in your watchlist`,'warning'); return; }
+  if (watchlist.length>=30)             { wlToast('Watchlist limit is 30 assets','warning'); return; }
+  const item = resolve(sym);
+  if (!item) return;
+  watchlist.push({...item, addedAt:Date.now()});
+  save();
+  quotes[item.symbol] = demoQuote(item.symbol);
+  render();
+  wlToast(`✅ ${item.symbol} added`,'success');
+  fetchLive([item.symbol]).then(render);
+}
+
+function removeSymbol(sym) {
+  watchlist = watchlist.filter(w=>w.symbol!==sym);
+  delete alerts[sym];
+  save();
+  render();
+  wlToast(`${sym} removed`,'info');
+}
+
+function addFromInput() {
+  const input = document.getElementById('wl-search');
+  const v = input.value.trim();
+  if (!v) return;
+  closeAc();
+  input.value = '';
+  addSymbol(v.toUpperCase());
+}
+
+function quickAdd(sym) { addSymbol(sym); }
+
+/* ═══ SORT / FILTER / VIEW ══════════════════════════════ */
+function setSort(btn, s) {
+  sortBy = s;
+  document.querySelectorAll('[data-sort]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+function setType(btn, t) {
+  filterType = t;
+  document.querySelectorAll('[data-type]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+function setView(v) {
+  viewMode = v;
+  document.getElementById('vbtn-rows').classList.toggle('active', v==='rows');
+  document.getElementById('vbtn-grid').classList.toggle('active', v==='grid');
+  render();
+}
+
+/* ═══ RENDER ════════════════════════════════════════════ */
+function sorted() {
+  let items = filterType==='all' ? [...watchlist] : watchlist.filter(w=>w.type===filterType);
+  items.sort((a,b)=>{
+    if (sortBy==='added')  return b.addedAt - a.addedAt;
+    if (sortBy==='name')   return a.symbol.localeCompare(b.symbol);
+    const qa=quotes[a.symbol]||{}, qb=quotes[b.symbol]||{};
+    if (sortBy==='change') return (qb.change||0)-(qa.change||0);
+    if (sortBy==='price')  return (qb.price||0)-(qa.price||0);
+    return 0;
+  });
+  return items;
+}
+
+function spark(data, up) {
+  if (!data||data.length<2) return '';
+  const W=80,H=32;
+  const mn=Math.min(...data), mx=Math.max(...data), rng=mx-mn||1;
+  const pts=data.map((v,i)=>{
+    const x=(i/(data.length-1))*W;
+    const y=H-((v-mn)/rng)*(H-6)-3;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const c=up?'#22c55e':'#ef4444', fc=up?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none">
+    <polygon points="0,${H} ${pts} ${W},${H}" fill="${fc}"/>
+    <polyline points="${pts}" stroke="${c}" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function render() {
+  const items  = sorted();
+  const list   = document.getElementById('wl-list');
+  const empty  = document.getElementById('wl-empty');
+
+  if (!watchlist.length) {
+    list.innerHTML = ''; empty.style.display='block'; updateStats(); return;
+  }
+  empty.style.display = 'none';
+  if (!items.length) {
+    list.innerHTML='<div class="empty-state" style="padding:40px 0;"><span class="empty-state-icon">🔍</span><h3>No assets match this filter</h3></div>';
+    updateStats(); return;
+  }
+
+  if (viewMode==='grid') {
+    list.innerHTML=`<div class="wl-grid-wrap">${items.map((w,i)=>gcCard(w,i)).join('')}</div>`;
+  } else {
+    list.innerHTML=items.map((w,i)=>rowCard(w,i)).join('');
+  }
+  updateStats();
+}
+
+function rowCard(w, i) {
+  const q  = quotes[w.symbol]||{};
+  const up = (q.change||0)>=0;
+  const cc = q.change>0?'up':q.change<0?'dn':'flat';
+  const cs = q.change>=0?'+':'';
+  const ha = !!alerts[w.symbol];
+  return `<div class="wl-row" style="animation-delay:${(i*.04).toFixed(2)}s;">
+    <div class="wl-sym-wrap">
+      <div class="wl-sym">${w.symbol}</div>
+      <div class="wl-name">${w.name}</div>
+      <span class="wl-type ${w.type}">${w.type}</span>
+    </div>
+    <div>${spark(q.spark,up)}</div>
+    <div class="wl-meta">
+      <div class="wl-meta-item">
+        <div class="wl-meta-val">${q.vol||'—'}</div>
+        <div class="wl-meta-lbl">Volume</div>
+      </div>
+    </div>
+    <div class="wl-price-col">
+      <div class="wl-price">${q.price!=null?fmtPrice(q.price,w.type):'—'}</div>
+      <div class="wl-chg ${cc}">${q.price!=null?cs+(q.change||0).toFixed(2)+'%':'—'}</div>
+    </div>
+    <div class="wl-actions">
+      <a href="/trade.html" class="wl-trade-lnk">Trade</a>
+      <button class="wl-act-btn${ha?' alerted':''}" title="Set price alert" onclick="openAlert('${w.symbol}')">🔔</button>
+      <button class="wl-act-btn rm" title="Remove" onclick="removeSymbol('${w.symbol}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function gcCard(w, i) {
+  const q  = quotes[w.symbol]||{};
+  const up = (q.change||0)>=0;
+  const cc = q.change>0?'up':q.change<0?'dn':'flat';
+  const cs = q.change>=0?'+':'';
+  const ha = !!alerts[w.symbol];
+  return `<div class="wl-gc" style="animation-delay:${(i*.04).toFixed(2)}s;">
+    <div class="wl-gc-top">
+      <div>
+        <div class="wl-gc-sym">${w.symbol}</div>
+        <div class="wl-gc-name">${w.name}</div>
+        <span class="wl-type ${w.type}">${w.type}</span>
+      </div>
+      <div style="text-align:right;">
+        <div class="wl-gc-price">${q.price!=null?fmtPrice(q.price,w.type):'—'}</div>
+        <span class="wl-gc-badge ${cc}">${q.price!=null?cs+(q.change||0).toFixed(2)+'%':'—'}</span>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">${spark(q.spark,up)}</div>
+    <div class="wl-gc-footer">
+      <a href="/trade.html" class="wl-trade-lnk" style="font-size:11px;padding:5px 10px;">Trade</a>
+      <div style="display:flex;gap:4px;">
+        <button class="wl-act-btn${ha?' alerted':''}" style="width:28px;height:28px;" onclick="openAlert('${w.symbol}')">🔔</button>
+        <button class="wl-act-btn rm" style="width:28px;height:28px;font-size:12px;" onclick="removeSymbol('${w.symbol}')">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateStats() {
+  const items   = watchlist;
+  const gainers = items.filter(w=>(quotes[w.symbol]?.change||0)>0).length;
+  const losers  = items.filter(w=>(quotes[w.symbol]?.change||0)<0).length;
+  const changes = items.map(w=>quotes[w.symbol]?.change||0).filter(Boolean);
+  const avg     = changes.length ? changes.reduce((a,b)=>a+b,0)/changes.length : null;
+
+  document.getElementById('stat-count').textContent   = items.length;
+  document.getElementById('stat-gainers').textContent = gainers;
+  document.getElementById('stat-losers').textContent  = losers;
+  const el = document.getElementById('stat-avg');
+  if (avg!=null) { el.textContent=(avg>=0?'+':'')+avg.toFixed(2)+'%'; el.style.color=avg>=0?'var(--up)':'var(--dn)'; }
+  else           { el.textContent='—'; el.style.color='var(--text)'; }
+}
+
+/* ═══ AUTOCOMPLETE ══════════════════════════════════════ */
+let acTimer = null;
+const searchEl = document.getElementById('wl-search');
+const acEl     = document.getElementById('wl-ac');
+
+searchEl.addEventListener('input', ()=>{ clearTimeout(acTimer); acTimer=setTimeout(()=>showAc(searchEl.value),120); });
+searchEl.addEventListener('keydown', e=>{ if(e.key==='Enter'){addFromInput();} if(e.key==='Escape'){closeAc();} });
+document.addEventListener('click', e=>{ if(!e.target.closest('.wl-add-wrap')) closeAc(); });
+
+function showAc(v) {
+  const q = v.trim().toUpperCase();
+  if (!q) { closeAc(); return; }
+  const matches = CATALOGUE.filter(s=>s.symbol.startsWith(q)||s.name.toUpperCase().includes(q)).slice(0,6);
+  if (!matches.length) { closeAc(); return; }
+  acEl.innerHTML = matches.map(s=>`
+    <div class="wl-ac-item" onclick="pickAc('${s.symbol}')">
+      <div class="wl-ac-sym">${s.symbol}</div>
+      <div class="wl-ac-name">${s.name}</div>
+      <span class="wl-ac-type ${s.type}">${s.type}</span>
+    </div>`).join('');
+  acEl.classList.add('open');
+}
+function pickAc(sym) { searchEl.value=''; closeAc(); addSymbol(sym); }
+function closeAc()   { acEl.classList.remove('open'); acEl.innerHTML=''; }
+
+/* ═══ ALERTS ════════════════════════════════════════════ */
+function openAlert(sym) {
+  alertSym = sym;
+  alertDir = 'above';
+  const w   = watchlist.find(x=>x.symbol===sym)||{};
+  const q   = quotes[sym]||{};
+  const ex  = alerts[sym];
+  document.getElementById('al-sym').textContent  = sym;
+  document.getElementById('al-name').textContent = w.name||'';
+  document.getElementById('al-cur').textContent  = q.price!=null ? 'Now: '+fmtPrice(q.price,w.type) : '';
+  document.getElementById('al-val').value         = ex?.target||'';
+  setAlertDir(ex?.direction||'above');
+  const m = document.getElementById('alert-modal');
+  m.classList.add('visible'); requestAnimationFrame(()=>m.classList.add('open'));
+  setTimeout(()=>document.getElementById('al-val').focus(), 120);
+}
+function closeAlert() {
+  const m = document.getElementById('alert-modal');
+  m.classList.remove('open');
+  m.addEventListener('transitionend',()=>m.classList.remove('visible'),{once:true});
+  alertSym = null;
+}
+function setAlertDir(d) {
+  alertDir = d;
+  document.getElementById('adir-above').classList.toggle('active', d==='above');
+  document.getElementById('adir-below').classList.toggle('active', d==='below');
+}
+function saveAlert() {
+  const val = parseFloat(document.getElementById('al-val').value);
+  if (!alertSym||isNaN(val)||val<=0) { wlToast('Enter a valid price','warning'); return; }
+  alerts[alertSym] = { direction:alertDir, target:val };
+  save(); closeAlert(); render();
+  wlToast(`🔔 Alert set for ${alertSym} at $${val.toFixed(2)}`,'success');
+}
+document.getElementById('alert-modal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('alert-modal')) closeAlert();
+});
+
+function checkAlerts() {
+  Object.entries(alerts).forEach(([sym,al])=>{
+    const q = quotes[sym];
+    if (!q?.price) return;
+    const hit = al.direction==='above' ? q.price>=al.target : q.price<=al.target;
+    if (hit) wlToast(`🔔 ${sym} hit your alert! Price ${al.direction} $${al.target}`,'success');
+  });
+}
+
+/* ═══ TOAST ════════════════════════════════════════════ */
+function wlToast(msg, type='info') {
+  if (window.BSAuth?.toast) { window.BSAuth.toast(msg,type); return; }
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),400); }, 2800);
+}
+
+/* ═══ BOOTSTRAP ═════════════════════════════════════════ */
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = () => {};
+
+async function init() {
+  load();
+  watchlist.forEach(w=>{ quotes[w.symbol] = demoQuote(w.symbol); });
+  render();
+  if (watchlist.length) {
+    await fetchLive(watchlist.map(w=>w.symbol));
+    render();
+    checkAlerts();
+  }
+  setInterval(async()=>{
+    if (!watchlist.length) return;
+    await fetchLive(watchlist.map(w=>w.symbol));
+    render(); checkAlerts();
+  }, 60000);
+}
+
+init();
+</script>
+</body>
+</html>

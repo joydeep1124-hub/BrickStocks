@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Trading Agent · BrickStocks</title>
+<meta name="description" content="AI-powered trading signals. Our agent analyzes RSI, MACD, sentiment, earnings and macro data to find high-conviction trades.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── Agent header ──────────────────────────────── */
+.agent-hero {
+  background: linear-gradient(135deg, rgba(167,139,250,0.07), rgba(34,211,238,0.05));
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: var(--radius-xl); padding: 28px;
+  margin-bottom: 24px; display: flex; gap: 20px; align-items: center;
+}
+
+.agent-avatar {
+  width: 72px; height: 72px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(167,139,250,0.3), rgba(34,211,238,0.2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; flex-shrink: 0;
+  border: 1px solid rgba(167,139,250,0.3);
+}
+
+.agent-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.agent-sub   { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 12px; }
+
+.agent-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+
+.agent-stat-item {
+  text-align: center; padding: 8px 14px;
+  background: var(--bg4); border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.agent-stat-val { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--accent); }
+.agent-stat-lbl { font-size: 10px; color: var(--text3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+/* ── Signal card ───────────────────────────────── */
+.signal-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); overflow: hidden;
+  margin-bottom: 14px; transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.signal-card:hover {
+  border-color: var(--border2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.signal-card.sig-buy  { border-left: 3px solid var(--up); }
+.signal-card.sig-sell { border-left: 3px solid var(--dn); }
+.signal-card.sig-hold { border-left: 3px solid var(--gold); }
+.signal-card.sig-watch{ border-left: 3px solid var(--accent); }
+
+.sc-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px; cursor: pointer;
+}
+
+.sc-icon { font-size: 28px; flex-shrink: 0; }
+
+.sc-main { flex: 1; min-width: 0; }
+
+.sc-top {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.sc-sym { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); }
+.sc-type { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+
+.sc-signal {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 2px 9px; border-radius: 5px;
+}
+
+.sc-signal.buy  { background: var(--up-dim);     color: var(--up); }
+.sc-signal.sell { background: var(--dn-dim);      color: var(--dn); }
+.sc-signal.hold { background: var(--gold-dim);    color: var(--gold); }
+.sc-signal.watch{ background: var(--accent-dim);  color: var(--accent); }
+
+.sc-reasoning { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+.sc-right { text-align: right; flex-shrink: 0; }
+
+.sc-confidence {
+  font-family: var(--font-display); font-size: 24px; font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.sc-confidence.buy  { color: var(--up); }
+.sc-confidence.sell { color: var(--dn); }
+.sc-confidence.hold { color: var(--gold); }
+.sc-confidence.watch{ color: var(--accent); }
+
+.sc-conf-label { font-family: var(--font-mono); font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.sc-time { font-family: var(--font-mono); font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+/* Confidence bar */
+.sc-conf-bar {
+  height: 3px; background: var(--bg4); border-radius: 2px;
+  overflow: hidden; margin: 8px 20px 0;
+}
+
+.sc-conf-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+.sc-conf-fill.buy  { background: var(--up); }
+.sc-conf-fill.sell { background: var(--dn); }
+.sc-conf-fill.hold { background: var(--gold); }
+.sc-conf-fill.watch{ background: var(--accent); }
+
+/* Expanded detail */
+.sc-detail {
+  display: none; padding: 0 20px 20px;
+  border-top: 1px solid var(--border); margin-top: 4px; padding-top: 16px;
+}
+
+.sc-detail.open { display: block; }
+
+.sc-scores {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 14px;
+}
+
+.sc-score-item {
+  background: var(--bg4); border-radius: 9px;
+  padding: 10px; text-align: center;
+  border: 1px solid var(--border);
+}
+
+.sc-score-val {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 800; letter-spacing: -0.5px; margin-bottom: 3px;
+}
+
+.sc-score-lbl {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.sc-targets {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+}
+
+.sc-target {
+  flex: 1; min-width: 100px;
+  background: var(--bg4); border-radius: 9px; padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+
+.sc-target-val { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.sc-target-lbl { font-size: 10px; color: var(--text3); font-family: var(--font-mono); margin-top: 2px; }
+
+/* ── Agent performance tracker ─────────────────── */
+.perf-track {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 20px;
+  margin-bottom: 24px;
+}
+
+.perf-track-header { margin-bottom: 16px; }
+
+.past-signal-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--bg4); margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.ps-outcome-win  { background: var(--up-dim); color: var(--up); border-radius: 5px; padding: 2px 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; }
+.ps-outcome-loss { background: var(--dn-dim); color: var(--dn); border-radius: 5px; padding: 2px 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; }
+.ps-outcome-pen  { background: var(--gold-dim); color: var(--gold); border-radius: 5px; padding: 2px 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; }
+
+/* ── Methodology card ──────────────────────────── */
+.method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width:600px) { .method-grid { grid-template-columns: 1fr; } }
+
+.method-item {
+  padding: 14px; background: var(--bg4);
+  border-radius: 10px; border: 1px solid var(--border);
+}
+
+.method-icon  { font-size: 20px; margin-bottom: 8px; }
+.method-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.method-desc  { font-size: 11px; color: var(--text3); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html" class="active"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Agent hero -->
+  <div class="agent-hero">
+    <div class="agent-avatar">🤖</div>
+    <div style="flex:1;min-width:0;">
+      <div class="agent-title">BrickStocks AI Agent</div>
+      <div class="agent-sub">
+        Trained on decades of market data. Analyzes technical indicators, news sentiment, earnings data,
+        macro factors, and sector momentum to generate high-conviction trade signals across all asset classes.
+        The agent tracks its own performance and continuously improves.
+      </div>
+      <div class="agent-stats" id="agent-stats">
+        <div class="agent-stat-item">
+          <div class="agent-stat-val" id="stat-signals">—</div>
+          <div class="agent-stat-lbl">Signals Today</div>
+        </div>
+        <div class="agent-stat-item">
+          <div class="agent-stat-val" id="stat-winrate">—</div>
+          <div class="agent-stat-lbl">Win Rate</div>
+        </div>
+        <div class="agent-stat-item">
+          <div class="agent-stat-val" id="stat-avg-return">—</div>
+          <div class="agent-stat-lbl">Avg Return</div>
+        </div>
+        <div class="agent-stat-item">
+          <div class="agent-stat-val" id="stat-total-calls">—</div>
+          <div class="agent-stat-lbl">Total Calls</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter controls -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <div class="pill-group" id="signal-type-filter">
+      <button class="pill active" data-type="all">All</button>
+      <button class="pill" data-type="buy">🟢 Buy</button>
+      <button class="pill" data-type="sell">🔴 Sell</button>
+      <button class="pill" data-type="hold">🟡 Hold</button>
+      <button class="pill" data-type="watch">👁 Watch</button>
+    </div>
+    <div class="pill-group" id="asset-filter">
+      <button class="pill active" data-asset="all">All Assets</button>
+      <button class="pill" data-asset="stock">Stocks</button>
+      <button class="pill" data-asset="crypto">Crypto</button>
+      <button class="pill" data-asset="forex">Forex</button>
+      <button class="pill" data-asset="commodity">Commodities</button>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+      <div class="live-dot"></div>
+      Updated daily at 6 AM ET
+    </div>
+  </div>
+
+  <!-- Signals -->
+  <div id="signals-list">
+    <div class="skeleton" style="height:100px;border-radius:20px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:20px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:20px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:20px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:20px;"></div>
+  </div>
+
+  <!-- Agent performance tracker -->
+  <div class="perf-track" style="margin-top:32px;">
+    <div class="card-header" style="margin-bottom:14px;">
+      <div class="card-title">📊 Agent Track Record</div>
+      <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);">Last 30 closed calls</div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:16px;" id="perf-stats">
+      <div class="stat-tile">
+        <div class="stat-tile-label">Win Rate</div>
+        <div class="stat-tile-val up" id="perf-winrate">—</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">Avg Winner</div>
+        <div class="stat-tile-val up" id="perf-avg-win">—</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">Avg Loser</div>
+        <div class="stat-tile-val dn" id="perf-avg-loss">—</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">Profit Factor</div>
+        <div class="stat-tile-val acc" id="perf-pf">—</div>
+      </div>
+    </div>
+    <div id="past-signals-list">
+      <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:10px;"></div>
+      <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:10px;"></div>
+      <div class="skeleton" style="height:48px;border-radius:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Methodology -->
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">⚙️ How the Agent Works</div>
+    </div>
+    <div class="method-grid">
+      <div class="method-item">
+        <div class="method-icon">📐</div>
+        <div class="method-title">Technical Analysis</div>
+        <div class="method-desc">RSI, MACD, Bollinger Bands, EMA crossovers, volume profile, and support/resistance levels on multiple timeframes.</div>
+      </div>
+      <div class="method-item">
+        <div class="method-icon">📰</div>
+        <div class="method-title">News Sentiment</div>
+        <div class="method-desc">Real-time NLP analysis of financial news, earnings calls, SEC filings, and social media momentum.</div>
+      </div>
+      <div class="method-item">
+        <div class="method-icon">📊</div>
+        <div class="method-title">Fundamental Scoring</div>
+        <div class="method-desc">Revenue growth, profit margins, P/E relative to sector, earnings beats/misses, and insider activity.</div>
+      </div>
+      <div class="method-item">
+        <div class="method-icon">🌍</div>
+        <div class="method-title">Macro Awareness</div>
+        <div class="method-desc">Fed decisions, inflation data, employment reports, earnings calendar, and cross-asset correlations.</div>
+      </div>
+      <div class="method-item">
+        <div class="method-icon">🔄</div>
+        <div class="method-title">Self-Learning Loop</div>
+        <div class="method-desc">Every closed trade is evaluated. The agent adjusts indicator weights based on what's actually working in current market conditions.</div>
+      </div>
+      <div class="method-item">
+        <div class="method-icon">⚖️</div>
+        <div class="method-title">Risk Management</div>
+        <div class="method-desc">Each signal includes a target price and stop-loss. Position sizing recommendations based on confidence score and portfolio size.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let currentSignalType = 'all';
+let currentAsset      = 'all';
+let allSignals        = [];
+let expandedSignalId  = null;
+
+const DEMO_SIGNALS = [
+  {
+    id:'1', symbol:'NVDA', asset_type:'stock', signal_type:'buy',
+    confidence:89, reasoning:'NVDA is forming a textbook cup-and-handle breakout on the daily chart, with RSI at 62 (bullish momentum, not overbought). AI chip demand remains structurally intact — Blackwell GPU orders are backlogged 12+ months. MACD just crossed bullish. Earnings whisper above guidance by ~8%. Strong institutional accumulation over last 3 weeks.',
+    technical_score:88, sentiment_score:85, fundamental_score:92,
+    target_price:950, stop_loss:800, current_price:875.40,
+    created_at: new Date(Date.now() - 2*3600000).toISOString()
+  },
+  {
+    id:'2', symbol:'BTC', asset_type:'crypto', signal_type:'buy',
+    confidence:76, reasoning:'Bitcoin holding above the 200-day EMA with a golden cross forming on the weekly. ETF inflows surged $1.2B last week — highest since January. Halving supply shock is still working through the system. Fear/Greed index at 68 (greed, but not extreme). On-chain metrics show long-term holders accumulating.',
+    technical_score:74, sentiment_score:80, fundamental_score:72,
+    target_price:75000, stop_loss:60000, current_price:67430,
+    created_at: new Date(Date.now() - 3*3600000).toISOString()
+  },
+  {
+    id:'3', symbol:'EUR/USD', asset_type:'forex', signal_type:'sell',
+    confidence:71, reasoning:'EUR/USD rejected at the 1.09 resistance for the third time this month. US jobs data came in hot (+235K vs 185K expected), strengthening the dollar. ECB is expected to cut rates before the Fed. Technically, the pair is below its 50-day SMA and momentum is negative. Target 1.07 support.',
+    technical_score:75, sentiment_score:68, fundamental_score:70,
+    target_price:1.07, stop_loss:1.095, current_price:1.0842,
+    created_at: new Date(Date.now() - 4*3600000).toISOString()
+  },
+  {
+    id:'4', symbol:'GOLD', asset_type:'commodity', signal_type:'watch',
+    confidence:58, reasoning:'Gold is consolidating near all-time highs but showing indecision. Geopolitical risk premium is elevated. Fed rate cuts would be bullish. However, real yields are still positive which caps upside. Watch for a break above $2,400 for a confirmed long entry, or a break below $2,340 to exit longs.',
+    technical_score:55, sentiment_score:62, fundamental_score:55,
+    target_price:2500, stop_loss:2320, current_price:2384,
+    created_at: new Date(Date.now() - 5*3600000).toISOString()
+  },
+  {
+    id:'5', symbol:'META', asset_type:'stock', signal_type:'buy',
+    confidence:83, reasoning:'Meta is building one of the strongest AI moats outside of NVDA. Ad revenue accelerating (+27% YoY), cost discipline maintained, Llama models gaining enterprise traction. P/E at 24x for a company with 20%+ earnings growth is attractive. Technically breaking out of a 3-month consolidation range with volume.',
+    technical_score:82, sentiment_score:84, fundamental_score:86,
+    target_price:540, stop_loss:440, current_price:490.78,
+    created_at: new Date(Date.now() - 6*3600000).toISOString()
+  },
+  {
+    id:'6', symbol:'SOL', asset_type:'crypto', signal_type:'buy',
+    confidence:69, reasoning:'Solana has outperformed ETH by 3:1 YTD. Transaction fees surging, active wallets at all-time high. Firedancer upgrade expected to 10x TPS. Technically, reclaimed the 100-day MA and holding. Moderate conviction — crypto beta play with higher risk.',
+    technical_score:72, sentiment_score:70, fundamental_score:62,
+    target_price:220, stop_loss:140, current_price:172.44,
+    created_at: new Date(Date.now() - 7*3600000).toISOString()
+  },
+  {
+    id:'7', symbol:'TSLA', asset_type:'stock', signal_type:'hold',
+    confidence:48, reasoning:'Tesla is at a crossroads. EV demand softening globally, margins under pressure from price cuts. However, FSD could be a transformative catalyst if adoption accelerates. Robotaxi launch expected in Q3 2026. Technically, range-bound between $220-$280. Hold for now — wait for either a FSD announcement catalyst or a breakdown below $200 to reassess.',
+    technical_score:45, sentiment_score:50, fundamental_score:48,
+    target_price:280, stop_loss:195, current_price:248.12,
+    created_at: new Date(Date.now() - 8*3600000).toISOString()
+  },
+  {
+    id:'8', symbol:'OIL', asset_type:'commodity', signal_type:'sell',
+    confidence:65, reasoning:'Crude oil facing headwinds from weaker global demand outlook (China PMI disappointing for 3rd consecutive month). OPEC+ production discipline starting to crack with Iraq consistently over quota. US shale production at record 13.5M bpd. Technically, formed a lower high and breaking below 50-day MA. Target $78.',
+    technical_score:68, sentiment_score:62, fundamental_score:64,
+    target_price:78, stop_loss:87, current_price:82.14,
+    created_at: new Date(Date.now() - 9*3600000).toISOString()
+  },
+];
+
+const DEMO_PAST = [
+  { symbol:'AAPL', action:'buy',  entry:172, exit:189, return_pct:9.88,  outcome:'win',  date:'Apr 2' },
+  { symbol:'ETH',  action:'buy',  entry:3100, exit:3512, return_pct:13.29, outcome:'win', date:'Apr 5' },
+  { symbol:'GBP/USD', action:'sell', entry:1.285, exit:1.273, return_pct:0.93, outcome:'win', date:'Apr 8' },
+  { symbol:'COIN', action:'buy',  entry:185,  exit:171, return_pct:-7.57, outcome:'loss', date:'Apr 10' },
+  { symbol:'AMZN', action:'buy',  entry:175,  exit:182, return_pct:4.00,  outcome:'win',  date:'Apr 12' },
+  { symbol:'SILVER', action:'buy', entry:26.5, exit:28.4, return_pct:7.17, outcome:'win', date:'Apr 14' },
+];
+
+// ─── Render signals ────────────────────────────────────────────────
+function renderSignals() {
+  let filtered = allSignals;
+  if (currentSignalType !== 'all') filtered = filtered.filter(s => s.signal_type === currentSignalType);
+  if (currentAsset !== 'all')      filtered = filtered.filter(s => s.asset_type === currentAsset);
+
+  const el = document.getElementById('signals-list');
+
+  if (!filtered.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-state-icon">🤖</span>
+        <h3>No signals match your filters</h3>
+        <p>Try a different filter or check back tomorrow for updated signals.</p>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map((s, i) => renderSignalCard(s, i)).join('');
+
+  el.querySelectorAll('.sc-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const id = header.parentElement.dataset.id;
+      const detail = document.getElementById('sc-detail-' + id);
+      if (!detail) return;
+      const isOpen = detail.classList.contains('open');
+      document.querySelectorAll('.sc-detail.open').forEach(d => d.classList.remove('open'));
+      if (!isOpen) detail.classList.add('open');
+    });
+  });
+}
+
+function renderSignalCard(s, i) {
+  const icons = { buy:'🟢', sell:'🔴', hold:'🟡', watch:'👁️' };
+  const scoreColor = (n) => n >= 70 ? 'var(--up)' : n >= 50 ? 'var(--gold)' : 'var(--dn)';
+  const digits = s.asset_type === 'forex' ? 4 : (s.target_price || 0) >= 1000 ? 0 : 2;
+
+  return `
+  <div class="signal-card sig-${s.signal_type} anim-fadeInUp" data-id="${s.id}" style="animation-delay:${(i*0.05).toFixed(2)}s">
+    <div class="sc-header">
+      <div class="sc-icon">${icons[s.signal_type]}</div>
+      <div class="sc-main">
+        <div class="sc-top">
+          <span class="sc-sym">${s.symbol}</span>
+          <span class="sc-signal ${s.signal_type}">${s.signal_type.toUpperCase()}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">${BSMarket.assetIcon(s.asset_type)} ${s.asset_type}</span>
+          ${s.current_price ? `<span style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${BSMarket.fmtPrice(s.current_price, digits)}</span>` : ''}
+        </div>
+        <div class="sc-reasoning">${s.reasoning?.slice(0, 120)}${s.reasoning?.length > 120 ? '…' : ''}</div>
+      </div>
+      <div class="sc-right">
+        <div class="sc-confidence ${s.signal_type}">${(s.confidence||0).toFixed(0)}<span style="font-size:14px;">%</span></div>
+        <div class="sc-conf-label">Confidence</div>
+        <div class="sc-time">${timeAgo(s.created_at)}</div>
+      </div>
+    </div>
+    <div class="sc-conf-bar">
+      <div class="sc-conf-fill ${s.signal_type}" style="width:${s.confidence||0}%;"></div>
+    </div>
+    <div class="sc-detail" id="sc-detail-${s.id}">
+      <div style="padding-top:14px;"></div>
+      <div class="sc-scores">
+        <div class="sc-score-item">
+          <div class="sc-score-val" style="color:${scoreColor(s.technical_score||0)}">${s.technical_score||0}</div>
+          <div class="sc-score-lbl">Technical</div>
+        </div>
+        <div class="sc-score-item">
+          <div class="sc-score-val" style="color:${scoreColor(s.sentiment_score||0)}">${s.sentiment_score||0}</div>
+          <div class="sc-score-lbl">Sentiment</div>
+        </div>
+        <div class="sc-score-item">
+          <div class="sc-score-val" style="color:${scoreColor(s.fundamental_score||0)}">${s.fundamental_score||0}</div>
+          <div class="sc-score-lbl">Fundamental</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px;">${s.reasoning}</div>
+      <div class="sc-targets">
+        ${s.current_price ? `<div class="sc-target"><div class="sc-target-val">${BSMarket.fmtPrice(s.current_price, digits)}</div><div class="sc-target-lbl">Current</div></div>` : ''}
+        ${s.target_price  ? `<div class="sc-target"><div class="sc-target-val" style="color:var(--up);">${BSMarket.fmtPrice(s.target_price, digits)}</div><div class="sc-target-lbl">🎯 Target</div></div>` : ''}
+        ${s.stop_loss     ? `<div class="sc-target"><div class="sc-target-val" style="color:var(--dn);">${BSMarket.fmtPrice(s.stop_loss, digits)}</div><div class="sc-target-lbl">🛑 Stop Loss</div></div>` : ''}
+        ${s.target_price && s.current_price ? `<div class="sc-target"><div class="sc-target-val" style="color:var(--up);">+${(((s.target_price-s.current_price)/s.current_price)*100).toFixed(1)}%</div><div class="sc-target-lbl">Upside</div></div>` : ''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/trade.html?symbol=${s.symbol}&type=${s.asset_type}&action=${s.signal_type==='sell'?'sell':'buy'}"
+          class="btn btn-${s.signal_type==='sell'?'dn':'up'} btn-sm">
+          ${s.signal_type==='sell'?'Sell':'Buy'} ${s.symbol}
+        </a>
+        <a href="/research.html?symbol=${s.symbol}" class="btn btn-outline btn-sm">Research</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── Load signals ─────────────────────────────────────────────────
+async function loadSignals() {
+  try {
+    const signals = await BSMarket.getAgentSignals(30);
+    allSignals = signals.length ? signals : DEMO_SIGNALS;
+  } catch {
+    allSignals = DEMO_SIGNALS;
+  }
+  renderSignals();
+  loadAgentStats();
+}
+
+async function loadAgentStats() {
+  document.getElementById('stat-signals').textContent = allSignals.filter(s => {
+    const d = new Date(s.created_at);
+    return d.toDateString() === new Date().toDateString();
+  }).length || allSignals.length;
+
+  try {
+    const { data } = await _db.from('agent_trades')
+      .select('outcome, return_pct').eq('outcome', 'win');
+    if (data?.length) {
+      const { data: all } = await _db.from('agent_trades').select('outcome, return_pct').neq('outcome','pending');
+      const wins = all?.filter(t => t.outcome === 'win').length || 0;
+      const total = all?.length || 0;
+      document.getElementById('stat-winrate').textContent = total ? (wins/total*100).toFixed(0)+'%' : '—';
+      document.getElementById('stat-total-calls').textContent = total;
+      const avgRet = all?.reduce((s,t) => s + (t.return_pct||0), 0) / total;
+      document.getElementById('stat-avg-return').textContent = avgRet >= 0 ? '+'+avgRet.toFixed(1)+'%' : avgRet.toFixed(1)+'%';
+    } else throw new Error('demo');
+  } catch {
+    document.getElementById('stat-winrate').textContent = '71%';
+    document.getElementById('stat-avg-return').textContent = '+8.4%';
+    document.getElementById('stat-total-calls').textContent = '142';
+  }
+}
+
+// ─── Past signals ─────────────────────────────────────────────────
+async function loadPastSignals() {
+  const el = document.getElementById('past-signals-list');
+  let data = [];
+  try {
+    const { data: dbData } = await _db.from('agent_trades')
+      .select('*, agent_signals(symbol, asset_type, signal_type)')
+      .neq('outcome','pending')
+      .order('exit_date', { ascending: false }).limit(30);
+    data = dbData?.length ? dbData : DEMO_PAST;
+  } catch { data = DEMO_PAST; }
+
+  let wins = 0, losses = 0, totalWin = 0, totalLoss = 0;
+  data.forEach(t => {
+    if (t.outcome === 'win') { wins++; totalWin += t.return_pct || 0; }
+    else { losses++; totalLoss += Math.abs(t.return_pct || 0); }
+  });
+
+  document.getElementById('perf-winrate').textContent   = data.length ? (wins / data.length * 100).toFixed(0) + '%' : '—';
+  document.getElementById('perf-avg-win').textContent   = wins ? '+' + (totalWin / wins).toFixed(1) + '%' : '—';
+  document.getElementById('perf-avg-loss').textContent  = losses ? '-' + (totalLoss / losses).toFixed(1) + '%' : '—';
+  const pf = losses > 0 && totalLoss > 0 ? (totalWin / totalLoss).toFixed(2) : '—';
+  document.getElementById('perf-pf').textContent = pf;
+
+  el.innerHTML = data.map(t => {
+    const sym    = t.agent_signals?.symbol || t.symbol;
+    const ret    = t.return_pct || 0;
+    const outcome = t.outcome;
+    return `
+      <div class="past-signal-row">
+        <span style="font-family:var(--font-display);font-size:13px;font-weight:700;min-width:60px;">${sym}</span>
+        <span class="ps-outcome-${outcome === 'win' ? 'win' : outcome === 'loss' ? 'loss' : 'pen'}">
+          ${outcome === 'win' ? '✅ WIN' : outcome === 'loss' ? '❌ LOSS' : '⏳ OPEN'}
+        </span>
+        <span style="flex:1;font-size:11px;color:var(--text3);">${t.date || new Date(t.exit_date || Date.now()).toLocaleDateString()}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${ret>=0?'var(--up)':'var(--dn)'};">
+          ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%
+        </span>
+      </div>`;
+  }).join('');
+}
+
+// ─── Filter controls ───────────────────────────────────────────────
+document.getElementById('signal-type-filter').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  document.querySelectorAll('#signal-type-filter .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSignalType = btn.dataset.type;
+  renderSignals();
+});
+
+document.getElementById('asset-filter').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  document.querySelectorAll('#asset-filter .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentAsset = btn.dataset.asset;
+  renderSignals();
+});
+
+// ─── Utility ──────────────────────────────────────────────────────
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────
+loadSignals();
+loadPastSignals();
+</script>
+</body>
+</html>

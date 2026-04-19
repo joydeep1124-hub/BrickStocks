@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>League · BrickStocks</title>
+<meta name="description" content="Join BrickStocks League — 2-week competitions where everyone starts with $10,000. Best return wins.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── League hero ────────────────────────────────── */
+.league-hero {
+  background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(59,130,246,0.06));
+  border: 1px solid rgba(34,211,238,0.2);
+  border-radius: var(--radius-xl); padding: 32px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+  text-align: center;
+}
+
+.league-hero::before {
+  content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 400px; height: 300px; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(34,211,238,0.07), transparent 70%);
+  pointer-events: none;
+}
+
+.lh-crown { font-size: 56px; display: block; margin-bottom: 12px; }
+.lh-title { font-family: var(--font-display); font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+.lh-sub   { font-size: 15px; color: var(--text2); max-width: 480px; margin: 0 auto 24px; }
+
+.lh-meta {
+  display: flex; align-items: center; justify-content: center;
+  gap: 24px; flex-wrap: wrap; margin-bottom: 24px;
+}
+
+.lh-meta-item {
+  text-align: center;
+}
+
+.lh-meta-val {
+  font-family: var(--font-display); font-size: 22px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--accent);
+}
+
+.lh-meta-lbl {
+  font-size: 11px; color: var(--text3); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px;
+}
+
+.lh-divider { width: 1px; height: 40px; background: var(--border); }
+
+/* ── Countdown timer ────────────────────────────── */
+.countdown-wrap {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-bottom: 24px;
+}
+
+.countdown-unit {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px; text-align: center;
+  min-width: 64px;
+}
+
+.countdown-num {
+  font-family: var(--font-display); font-size: 28px;
+  font-weight: 800; letter-spacing: -1px; color: var(--text);
+}
+
+.countdown-lbl {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.countdown-sep {
+  font-family: var(--font-display); font-size: 24px;
+  font-weight: 800; color: var(--text3);
+  align-self: flex-start; margin-top: 8px;
+}
+
+/* ── League card ────────────────────────────────── */
+.league-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); overflow: hidden;
+  margin-bottom: 16px; transition: border-color 0.2s;
+}
+
+.league-card.active { border-color: rgba(34,211,238,0.3); }
+.league-card.upcoming { border-color: rgba(245,158,11,0.2); }
+
+.lc-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+}
+
+.lc-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  flex-shrink: 0;
+}
+
+.lc-icon.active   { background: var(--accent-dim); }
+.lc-icon.upcoming { background: var(--gold-dim); }
+.lc-icon.finished { background: rgba(255,255,255,0.05); }
+
+.lc-name { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+.lc-dates { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+
+.lc-status {
+  margin-left: auto; flex-shrink: 0;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  padding: 4px 10px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.lc-status.active   { background: var(--up-dim);     color: var(--up);     border: 1px solid rgba(34,197,94,0.25); }
+.lc-status.upcoming { background: var(--gold-dim);   color: var(--gold);   border: 1px solid rgba(245,158,11,0.25); }
+.lc-status.finished { background: rgba(255,255,255,0.05); color: var(--text3); border: 1px solid var(--border); }
+
+.lc-meta {
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+
+.lc-meta-item { text-align: center; }
+.lc-meta-val  { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text); }
+.lc-meta-lbl  { font-size: 10px; color: var(--text3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+
+.lc-actions { padding: 16px 24px; display: flex; gap: 10px; align-items: center; }
+
+/* ── Leaderboard inside league ─────────────────────── */
+.league-lb {
+  padding: 0 24px 16px;
+}
+
+.llb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  margin-bottom: 6px;
+  background: var(--bg4); transition: background 0.12s; cursor: pointer;
+}
+
+.llb-row:hover { background: rgba(255,255,255,0.04); }
+.llb-row.is-me { border: 1px solid rgba(34,211,238,0.3); background: var(--accent-dim); }
+
+.llb-rank { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text3); width: 28px; text-align: center; }
+.llb-rank.r1 { color: var(--gold); font-size: 22px; }
+.llb-rank.r2 { color: #94a3b8; font-size: 20px; }
+.llb-rank.r3 { color: #a97c50; font-size: 18px; }
+
+.llb-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--accent); flex-shrink: 0;
+}
+
+.llb-name { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); }
+.llb-sub  { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+
+.llb-portfolio { font-family: var(--font-mono); font-size: 12px; color: var(--text2); flex: 1; text-align: right; }
+
+.llb-return {
+  font-family: var(--font-display); font-size: 15px; font-weight: 800;
+  text-align: right; white-space: nowrap; min-width: 64px;
+}
+
+/* ── Rules card ─────────────────────────────────── */
+.rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 600px) { .rules-grid { grid-template-columns: 1fr; } }
+
+.rule-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px; background: var(--bg4);
+  border-radius: var(--radius); border: 1px solid var(--border);
+}
+
+.rule-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.rule-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.rule-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
+
+/* ── Prize tiers ────────────────────────────────── */
+.prizes-row {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+}
+
+.prize-card {
+  flex: 1; min-width: 120px;
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; text-align: center;
+}
+
+.prize-card.p1 { border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.05); }
+.prize-card.p2 { border-color: rgba(148,163,184,0.3); }
+.prize-card.p3 { border-color: rgba(169,124,80,0.25); }
+
+.prize-place  { font-size: 28px; display: block; margin-bottom: 6px; }
+.prize-label  { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.prize-amount { font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.prize-amount.p1 { color: var(--gold); }
+.prize-amount.p2 { color: #94a3b8; }
+.prize-amount.p3 { color: #a97c50; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html" class="active"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Hero -->
+  <div class="league-hero">
+    <span class="lh-crown">🏆</span>
+    <h1 class="lh-title">BrickStocks League</h1>
+    <p class="lh-sub">
+      Everyone starts with $10,000 virtual dollars. 14 days to build the best portfolio.
+      Who turns $10K into the most? Find out.
+    </p>
+    <div class="lh-meta">
+      <div class="lh-meta-item">
+        <div class="lh-meta-val">$10,000</div>
+        <div class="lh-meta-lbl">Starting Capital</div>
+      </div>
+      <div class="lh-divider"></div>
+      <div class="lh-meta-item">
+        <div class="lh-meta-val">14 Days</div>
+        <div class="lh-meta-lbl">Sprint Duration</div>
+      </div>
+      <div class="lh-divider"></div>
+      <div class="lh-meta-item">
+        <div class="lh-meta-val" id="hero-players">—</div>
+        <div class="lh-meta-lbl">In League</div>
+      </div>
+      <div class="lh-divider"></div>
+      <div class="lh-meta-item">
+        <div class="lh-meta-val">500 🪙</div>
+        <div class="lh-meta-lbl">Prize Pool</div>
+      </div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="countdown-wrap" id="countdown-wrap">
+      <div class="countdown-unit"><div class="countdown-num" id="cd-days">—</div><div class="countdown-lbl">Days</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><div class="countdown-num" id="cd-hours">—</div><div class="countdown-lbl">Hours</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><div class="countdown-num" id="cd-mins">—</div><div class="countdown-lbl">Mins</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><div class="countdown-num" id="cd-secs">—</div><div class="countdown-lbl">Secs</div></div>
+    </div>
+
+    <button class="btn btn-primary btn-lg" id="hero-join-btn" onclick="joinActiveLeague()">
+      🚀 Join the League
+    </button>
+  </div>
+
+  <!-- Prize breakdown -->
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">🎁 Prize Breakdown</div>
+    </div>
+    <div class="prizes-row">
+      <div class="prize-card p1">
+        <span class="prize-place">🥇</span>
+        <div class="prize-label">1st Place</div>
+        <div class="prize-amount p1">500 🪙</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Chips + Trophy Badge</div>
+      </div>
+      <div class="prize-card p2">
+        <span class="prize-place">🥈</span>
+        <div class="prize-label">2nd Place</div>
+        <div class="prize-amount p2">250 🪙</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Chips + Silver Badge</div>
+      </div>
+      <div class="prize-card p3">
+        <span class="prize-place">🥉</span>
+        <div class="prize-label">3rd Place</div>
+        <div class="prize-amount p3">100 🪙</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Chips + Bronze Badge</div>
+      </div>
+      <div class="prize-card" style="background:var(--bg4);">
+        <span class="prize-place">🌟</span>
+        <div class="prize-label">Top 10</div>
+        <div class="prize-amount" style="color:var(--accent);font-size:16px;">25 🪙</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Chips each</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active league leaderboard -->
+  <div id="active-league-section">
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title">🔥 Current League Standings</div>
+      <div style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--up);">
+        <div class="live-dot"></div> Live
+      </div>
+    </div>
+    <div id="active-league-card">
+      <div class="skeleton" style="height:200px;border-radius:20px;"></div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">📋 League Rules</div>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-item">
+        <div class="rule-icon">💰</div>
+        <div>
+          <div class="rule-title">Equal Start</div>
+          <div class="rule-desc">Everyone begins with exactly $10,000 virtual dollars — no advantages, pure skill.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">📅</div>
+        <div>
+          <div class="rule-title">14-Day Sprint</div>
+          <div class="rule-desc">Leagues run every two weeks, starting Monday morning and ending Sunday night.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">📊</div>
+        <div>
+          <div class="rule-title">All Assets Allowed</div>
+          <div class="rule-desc">Trade stocks, ETFs, crypto, forex, and commodities — no restrictions on strategy.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🏆</div>
+        <div>
+          <div class="rule-title">% Return Wins</div>
+          <div class="rule-desc">Rankings are based on total portfolio % return, not absolute value. Play smart.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🚫</div>
+        <div>
+          <div class="rule-title">No Shorting (Yet)</div>
+          <div class="rule-desc">Currently long-only trading. Shorting and options will come in a future update.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🔒</div>
+        <div>
+          <div class="rule-title">Separate Portfolio</div>
+          <div class="rule-desc">League trades are separate from your personal portfolio — different cash, different holdings.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past leagues -->
+  <div style="margin-top:32px;">
+    <div class="section-header" style="margin-bottom:16px;">
+      <div class="section-title">📜 Past Leagues</div>
+    </div>
+    <div id="past-leagues">
+      <div class="skeleton" style="height:100px;border-radius:16px;margin-bottom:12px;"></div>
+      <div class="skeleton" style="height:100px;border-radius:16px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Join modal -->
+<div class="modal-overlay" id="join-modal">
+  <div class="modal">
+    <button class="modal-close" id="join-modal-close">✕</button>
+    <div style="font-size:40px;text-align:center;margin-bottom:12px;">🏆</div>
+    <div class="modal-title" style="text-align:center;">Join the League</div>
+    <div class="modal-sub" style="text-align:center;" id="join-modal-sub">
+      You'll start with $10,000 virtual dollars. Trade any asset to maximize your return by the end date.
+    </div>
+    <div style="background:var(--bg4);border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div class="order-sum-row" style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);padding:4px 0;color:var(--text2);">
+        <span>Starting Capital</span><span style="font-weight:700;color:var(--up);">$10,000</span>
+      </div>
+      <div class="order-sum-row" style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);padding:4px 0;color:var(--text2);">
+        <span>Entry Fee</span><span style="color:var(--up);">FREE</span>
+      </div>
+      <div class="order-sum-row" style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);padding:4px 0;color:var(--text2);">
+        <span>1st Prize</span><span style="color:var(--gold);">500 🪙 Chips</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" id="join-cancel">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:15px;" id="join-confirm">Join League 🚀</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let activeLeague = null;
+let userId = null;
+let isMember = false;
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = async (user, profile) => {
+  userId = user.id;
+  await checkMembership();
+};
+
+// ─── Load leagues ─────────────────────────────────────────────────
+async function loadLeagues() {
+  const { data: leagues } = await _db.from('leagues')
+    .select('*, league_members(count)')
+    .order('start_date', { ascending: false })
+    .limit(10);
+
+  if (!leagues?.length) {
+    renderDemoLeague();
+    return;
+  }
+
+  const active  = leagues.find(l => l.status === 'active');
+  const past    = leagues.filter(l => l.status === 'completed');
+  const upcoming = leagues.filter(l => l.status === 'upcoming');
+
+  if (active) {
+    activeLeague = active;
+    renderActiveLeague(active);
+    startCountdown(active.end_date);
+    const memberCount = active.league_members?.[0]?.count || 0;
+    document.getElementById('hero-players').textContent = memberCount;
+  } else if (upcoming.length) {
+    renderUpcomingLeague(upcoming[0]);
+    document.getElementById('hero-players').textContent = '—';
+  } else {
+    renderDemoLeague();
+  }
+
+  renderPastLeagues(past);
+}
+
+function renderActiveLeague(league) {
+  const el = document.getElementById('active-league-card');
+  el.innerHTML = `
+    <div class="league-card active">
+      <div class="lc-header">
+        <div class="lc-icon active">🔥</div>
+        <div>
+          <div class="lc-name">${league.name}</div>
+          <div class="lc-dates">${formatDate(league.start_date)} → ${formatDate(league.end_date)}</div>
+        </div>
+        <div class="lc-status active">● LIVE</div>
+      </div>
+      <div class="lc-meta">
+        <div class="lc-meta-item"><div class="lc-meta-val">$${(league.starting_capital||10000).toLocaleString()}</div><div class="lc-meta-lbl">Starting $</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val" id="lc-members">—</div><div class="lc-meta-lbl">Players</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val">${league.prize_chips || 500} 🪙</div><div class="lc-meta-lbl">1st Prize</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val" id="lc-days-left">—</div><div class="lc-meta-lbl">Days Left</div></div>
+      </div>
+      <div class="league-lb" id="league-standings">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Live Standings</div>
+        <div id="standings-list">
+          <div class="skeleton" style="height:48px;margin-bottom:6px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:48px;margin-bottom:6px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:48px;border-radius:10px;"></div>
+        </div>
+      </div>
+      <div class="lc-actions">
+        <button class="btn btn-primary" id="join-btn" onclick="joinActiveLeague()">🚀 Join League</button>
+        <a href="/trade.html" class="btn btn-outline" id="trade-in-league-btn" style="display:none;">💹 Trade Now</a>
+        <span style="flex:1;font-size:11px;color:var(--text3);">Free to enter · Separate from personal portfolio</span>
+      </div>
+    </div>`;
+
+  loadStandings(league.id);
+  loadMemberCount(league.id);
+  updateDaysLeft(league.end_date);
+}
+
+async function loadStandings(leagueId) {
+  const { data } = await _db.from('league_members')
+    .select('*, profiles(username, display_name, tier)')
+    .eq('league_id', leagueId)
+    .order('return_pct', { ascending: false })
+    .limit(10);
+
+  const el = document.getElementById('standings-list');
+  if (!data?.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No players yet — be the first!</div>';
+    return;
+  }
+
+  el.innerHTML = data.map((m, i) => {
+    const profile  = m.profiles || {};
+    const initials = (profile.display_name || profile.username || '?').slice(0, 2).toUpperCase();
+    const isMe     = userId && m.user_id === userId;
+    const ret      = m.return_pct || 0;
+    const rankCls  = i < 3 ? `r${i+1}` : '';
+    const medals   = ['🥇','🥈','🥉'];
+    return `
+      <div class="llb-row ${isMe ? 'is-me' : ''}">
+        <div class="llb-rank ${rankCls}">${medals[i] || (i+1)}</div>
+        <div class="llb-avatar">${initials}</div>
+        <div style="flex:1;">
+          <div class="llb-name">${profile.display_name || profile.username || 'Trader'} ${isMe ? '(You)' : ''}</div>
+          <div class="llb-sub">${BSMarket.fmtPrice(m.current_value || 10000)}</div>
+        </div>
+        <div class="llb-return ${ret >= 0 ? 'chg-up' : 'chg-dn'}">
+          ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadMemberCount(leagueId) {
+  const { count } = await _db.from('league_members').select('id', { count: 'exact', head: true }).eq('league_id', leagueId);
+  const el1 = document.getElementById('lc-members');
+  const el2 = document.getElementById('hero-players');
+  if (el1) el1.textContent = count || 0;
+  if (el2) el2.textContent = count || 0;
+}
+
+function updateDaysLeft(endDate) {
+  const end  = new Date(endDate + 'T23:59:59');
+  const days = Math.ceil((end - Date.now()) / 86400000);
+  const el   = document.getElementById('lc-days-left');
+  if (el) el.textContent = days > 0 ? days + 'd' : 'Final day';
+}
+
+function renderDemoLeague() {
+  document.getElementById('active-league-card').innerHTML = `
+    <div class="league-card active">
+      <div class="lc-header">
+        <div class="lc-icon active">🔥</div>
+        <div>
+          <div class="lc-name">Spring Sprint 2026</div>
+          <div class="lc-dates">Apr 14, 2026 → Apr 27, 2026</div>
+        </div>
+        <div class="lc-status active">● LIVE</div>
+      </div>
+      <div class="lc-meta">
+        <div class="lc-meta-item"><div class="lc-meta-val">$10,000</div><div class="lc-meta-lbl">Starting $</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val">47</div><div class="lc-meta-lbl">Players</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val">500 🪙</div><div class="lc-meta-lbl">1st Prize</div></div>
+        <div class="lc-meta-item"><div class="lc-meta-val">9d</div><div class="lc-meta-lbl">Days Left</div></div>
+      </div>
+      <div class="lc-actions">
+        <button class="btn btn-primary" onclick="joinActiveLeague()">🚀 Join League</button>
+        <span style="flex:1;font-size:11px;color:var(--text3);">Free entry · Fake money only</span>
+      </div>
+    </div>`;
+  document.getElementById('hero-players').textContent = '47';
+}
+
+function renderUpcomingLeague(league) {
+  document.getElementById('active-league-card').innerHTML = `
+    <div class="league-card upcoming">
+      <div class="lc-header">
+        <div class="lc-icon upcoming">⏳</div>
+        <div>
+          <div class="lc-name">${league.name}</div>
+          <div class="lc-dates">Starts ${formatDate(league.start_date)}</div>
+        </div>
+        <div class="lc-status upcoming">UPCOMING</div>
+      </div>
+      <div class="lc-actions">
+        <button class="btn btn-outline" onclick="joinActiveLeague()">🔔 Register Early</button>
+      </div>
+    </div>`;
+}
+
+function renderPastLeagues(leagues) {
+  const el = document.getElementById('past-leagues');
+  if (!leagues.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);">No past leagues yet. Be part of the first one!</div>';
+    return;
+  }
+  el.innerHTML = leagues.map(l => `
+    <div class="league-card finished" style="margin-bottom:12px;">
+      <div class="lc-header">
+        <div class="lc-icon finished">🏁</div>
+        <div>
+          <div class="lc-name">${l.name}</div>
+          <div class="lc-dates">${formatDate(l.start_date)} → ${formatDate(l.end_date)}</div>
+        </div>
+        <div class="lc-status finished">ENDED</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── Countdown ────────────────────────────────────────────────────
+function startCountdown(endDate) {
+  const end = new Date(endDate + 'T23:59:59');
+  function tick() {
+    const diff = end - Date.now();
+    if (diff <= 0) {
+      ['cd-days','cd-hours','cd-mins','cd-secs'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '00';
+      });
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cd-days').textContent  = String(d).padStart(2,'0');
+    document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-mins').textContent  = String(m).padStart(2,'0');
+    document.getElementById('cd-secs').textContent  = String(s).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ─── Join league ──────────────────────────────────────────────────
+async function checkMembership() {
+  if (!userId || !activeLeague) return;
+  const { data } = await _db.from('league_members')
+    .select('id').eq('user_id', userId).eq('league_id', activeLeague.id).maybeSingle();
+  isMember = !!data;
+  updateJoinButton();
+}
+
+function updateJoinButton() {
+  const joinBtn  = document.getElementById('join-btn');
+  const tradeBtn = document.getElementById('trade-in-league-btn');
+  const heroBtnEl = document.getElementById('hero-join-btn');
+  if (isMember) {
+    if (joinBtn)  { joinBtn.textContent = '✅ Joined'; joinBtn.disabled = true; }
+    if (tradeBtn) tradeBtn.style.display = '';
+    if (heroBtnEl){ heroBtnEl.textContent = '💹 Trade in League'; heroBtnEl.onclick = () => window.location = '/trade.html'; }
+  }
+}
+
+function joinActiveLeague() {
+  if (!window.BSAuth?.getUser()) { window.BSAuth?.open(); return; }
+  const modal = document.getElementById('join-modal');
+  const subEl = document.getElementById('join-modal-sub');
+  if (activeLeague) subEl.textContent = `Join ${activeLeague.name}. You'll start with $10,000 virtual dollars. Best % return by ${formatDate(activeLeague.end_date)} wins.`;
+  modal.classList.add('visible');
+  requestAnimationFrame(() => modal.classList.add('open'));
+}
+
+function closeJoinModal() {
+  const modal = document.getElementById('join-modal');
+  modal.classList.remove('open');
+  modal.addEventListener('transitionend', () => modal.classList.remove('visible'), { once: true });
+}
+
+document.getElementById('join-modal-close').addEventListener('click', closeJoinModal);
+document.getElementById('join-cancel').addEventListener('click', closeJoinModal);
+document.getElementById('join-modal').addEventListener('click', e => { if (e.target === document.getElementById('join-modal')) closeJoinModal(); });
+
+document.getElementById('join-confirm').addEventListener('click', async () => {
+  const btn = document.getElementById('join-confirm');
+  btn.disabled = true; btn.textContent = 'Joining…';
+
+  if (!activeLeague) {
+    // Create demo league entry
+    BSAuth.toast('No active league found. Check back soon!', 'info');
+    closeJoinModal(); btn.disabled = false; btn.textContent = 'Join League 🚀';
+    return;
+  }
+
+  const { error } = await _db.from('league_members').upsert({
+    league_id: activeLeague.id,
+    user_id: userId,
+    starting_cash: activeLeague.starting_capital || 10000,
+    current_cash:  activeLeague.starting_capital || 10000,
+    current_value: activeLeague.starting_capital || 10000,
+    return_pct: 0,
+  });
+
+  btn.disabled = false; btn.textContent = 'Join League 🚀';
+  closeJoinModal();
+
+  if (error) {
+    BSAuth.toast('Error joining league: ' + error.message, 'error');
+  } else {
+    isMember = true;
+    updateJoinButton();
+    loadMemberCount(activeLeague.id);
+    BSAuth.toast('🎉 You joined the league! $10,000 is ready. Trade now!', 'success');
+    setTimeout(() => window.location = '/trade.html', 2000);
+  }
+});
+
+// ─── Utilities ────────────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────
+loadLeagues();
+
+// Demo countdown if no active league
+setTimeout(() => {
+  if (!document.getElementById('cd-days').textContent || document.getElementById('cd-days').textContent === '—') {
+    const fakeEnd = new Date(Date.now() + 9 * 86400000 + 6 * 3600000);
+    startCountdown(fakeEnd.toISOString().split('T')[0]);
+  }
+}, 2000);
+</script>
+</body>
+</html>

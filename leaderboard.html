@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Leaderboard · BrickStocks</title>
+<meta name="description" content="See who's dominating BrickStocks. Top traders ranked by portfolio performance and total trophies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── Podium ─────────────────────────────────────────── */
+@keyframes podium-rise { from { opacity:0; transform:scaleY(0.5) translateY(20px); } to { opacity:1; transform:scaleY(1) translateY(0); } }
+@keyframes podium-card-in { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes crown-float { 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-5px) rotate(5deg)} }
+@keyframes gold-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.15),0 8px 32px rgba(0,0,0,0.4)} 50%{box-shadow:0 0 32px 6px rgba(245,158,11,0.18),0 8px 32px rgba(0,0,0,0.4)} }
+
+.lb-podium { display:grid; grid-template-columns:1fr 1.1fr 1fr; gap:10px; margin-bottom:28px; align-items:end; }
+
+.podium-slot { display:flex; flex-direction:column; align-items:center; animation:podium-card-in 0.5s cubic-bezier(.22,1,.36,1) both; }
+.podium-slot:nth-child(1){animation-delay:0.08s} .podium-slot:nth-child(2){animation-delay:0s} .podium-slot:nth-child(3){animation-delay:0.16s}
+
+.podium-card {
+  width:100%; background:var(--bg3); border:1px solid var(--border);
+  border-radius:18px; padding:18px 12px 14px; text-align:center;
+  cursor:pointer; text-decoration:none; color:inherit;
+  transition:transform 0.2s; position:relative; overflow:hidden; display:block;
+}
+.podium-card:hover{transform:translateY(-4px)}
+.podium-card.rank-1{border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.05);animation:gold-pulse 2.8s ease-in-out infinite}
+.podium-card.rank-2{border-color:rgba(148,163,184,0.3);background:rgba(148,163,184,0.03)}
+.podium-card.rank-3{border-color:rgba(169,124,80,0.3);background:rgba(169,124,80,0.03)}
+
+.podium-card-bar{position:absolute;top:0;left:0;right:0;height:3px}
+.rank-1 .podium-card-bar{background:linear-gradient(90deg,rgba(245,158,11,0) 0%,#f59e0b 40%,#f59e0b 60%,rgba(245,158,11,0) 100%)}
+.rank-2 .podium-card-bar{background:linear-gradient(90deg,rgba(148,163,184,0) 0%,#94a3b8 40%,#94a3b8 60%,rgba(148,163,184,0) 100%)}
+.rank-3 .podium-card-bar{background:linear-gradient(90deg,rgba(169,124,80,0) 0%,#a97c50 40%,#a97c50 60%,rgba(169,124,80,0) 100%)}
+
+.podium-crown{font-size:22px;margin-bottom:4px;animation:crown-float 2s ease-in-out infinite;display:block}
+.podium-avatar{
+  width:52px;height:52px;border-radius:50%; margin:0 auto 10px;
+  background:var(--accent-dim);border:2px solid rgba(34,211,238,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--accent);flex-shrink:0;
+}
+.rank-1 .podium-avatar{width:58px;height:58px;font-size:18px;border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.08);color:#f59e0b}
+.rank-2 .podium-avatar{border-color:rgba(148,163,184,0.3);background:rgba(148,163,184,0.06);color:#94a3b8}
+.rank-3 .podium-avatar{border-color:rgba(169,124,80,0.3);background:rgba(169,124,80,0.06);color:#a97c50}
+
+.podium-name{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.podium-handle{font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:10px}
+.podium-score{font-family:var(--font-display);font-size:18px;font-weight:800;letter-spacing:-0.5px}
+.rank-1 .podium-score{font-size:22px;color:#f59e0b}
+.rank-2 .podium-score{color:#94a3b8}
+.rank-3 .podium-score{color:#a97c50}
+.podium-sub{font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:3px}
+
+.podium-base{border-radius:0 0 12px 12px;animation:podium-rise 0.6s cubic-bezier(.22,1,.36,1) both;transform-origin:bottom}
+.rank-2-base{height:28px;background:linear-gradient(180deg,rgba(148,163,184,0.1),rgba(148,163,184,0.03));border:1px solid rgba(148,163,184,0.12);border-top:none;animation-delay:0.05s}
+.rank-1-base{height:48px;background:linear-gradient(180deg,rgba(245,158,11,0.1),rgba(245,158,11,0.03));border:1px solid rgba(245,158,11,0.18);border-top:none;animation-delay:0s}
+.rank-3-base{height:14px;background:linear-gradient(180deg,rgba(169,124,80,0.08),rgba(169,124,80,0.02));border:1px solid rgba(169,124,80,0.1);border-top:none;animation-delay:0.1s}
+
+/* ── Leaderboard rows ─────────────────────────────── */
+@keyframes fadeInUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.lb-row {
+  display:grid; grid-template-columns:52px 1fr auto auto;
+  align-items:center; gap:12px;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:14px; padding:14px 16px;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  text-decoration:none; color:inherit;
+  animation:fadeInUp 0.4s cubic-bezier(.22,1,.36,1) both;
+  position:relative; overflow:hidden; cursor:pointer;
+}
+
+.lb-bar{position:absolute;bottom:0;left:0;height:2px;border-radius:0 2px 2px 0;transition:width 0.7s cubic-bezier(.22,1,.36,1)}
+.lb-bar.pos{background:linear-gradient(90deg,rgba(34,197,94,0.7),rgba(34,197,94,0.15))}
+.lb-bar.neg{background:linear-gradient(90deg,rgba(239,68,68,0.5),rgba(239,68,68,0.1))}
+
+.lb-row:hover{border-color:rgba(34,211,238,0.2);box-shadow:0 0 0 1px rgba(34,211,238,0.06),0 4px 20px rgba(0,0,0,0.3)}
+.lb-row.is-me{border-color:rgba(34,211,238,0.35);background:rgba(34,211,238,0.04)}
+.lb-row.top-1{border-color:rgba(245,158,11,0.45);background:rgba(245,158,11,0.05)}
+
+.lb-rank{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text3);text-align:center}
+.lb-rank.gold{color:#f59e0b;font-size:26px} .lb-rank.silver{color:#94a3b8;font-size:24px} .lb-rank.bronze{color:#a97c50;font-size:22px}
+
+.lb-avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-dim);border:1px solid rgba(34,211,238,0.2);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--accent);flex-shrink:0}
+.lb-name{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text)}
+.lb-handle{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+.lb-tier{font-size:9px;font-family:var(--font-mono);padding:2px 6px;border-radius:4px;margin-left:6px}
+
+.lb-record{font-size:12px;color:var(--text3);font-family:var(--font-mono);text-align:right;white-space:nowrap}
+.lb-gain{font-family:var(--font-display);font-size:18px;font-weight:800;text-align:right;white-space:nowrap;letter-spacing:-0.5px}
+.lb-gain.pos{color:var(--up)} .lb-gain.neg{color:var(--dn)} .lb-gain.zero{color:var(--text3)}
+
+.lb-row:nth-child(1){animation-delay:.04s} .lb-row:nth-child(2){animation-delay:.08s}
+.lb-row:nth-child(3){animation-delay:.12s} .lb-row:nth-child(4){animation-delay:.16s}
+.lb-row:nth-child(5){animation-delay:.20s} .lb-row:nth-child(6){animation-delay:.24s}
+
+/* ── Tier badges ──────────────────────────────────── */
+.nav-tier.rookie   { background:rgba(255,255,255,0.05);  color:var(--text3); }
+.nav-tier.trader   { background:var(--accent-dim);       color:var(--accent); }
+.nav-tier.analyst  { background:var(--blue-dim);         color:var(--blue); }
+.nav-tier.expert   { background:var(--purple-dim);       color:var(--purple); }
+.nav-tier.legend   { background:var(--gold-dim);         color:var(--gold); }
+
+/* ── Controls ─────────────────────────────────────── */
+.lb-controls{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+
+.rank-delta{display:inline-flex;align-items:center;gap:1px;font-family:var(--font-mono);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+.rank-delta.up{color:var(--up);background:var(--up-dim)} .rank-delta.dn{color:var(--dn);background:var(--dn-dim)} .rank-delta.new{color:var(--accent);background:var(--accent-dim)}
+
+.streak-badge{display:inline-flex;align-items:center;gap:2px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:1px 7px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--gold);margin-left:6px}
+
+.lb-empty{text-align:center;padding:60px 20px;color:var(--text3)}
+.lb-empty h3{font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text2)}
+.lb-empty p{font-size:13px;margin-bottom:20px}
+
+.lb-skeleton{height:68px;background:var(--bg3);border-radius:14px;border:1px solid var(--border);opacity:0.5;animation:skeleton-pulse 1.4s ease-in-out infinite;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html" class="active"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-sm" style="padding-top:72px;">
+
+  <div class="page-header">
+    <h1 class="page-title">🏅 Rankings</h1>
+    <p class="page-sub">The best virtual traders on BrickStocks. Can you crack the top 10?</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="lb-controls">
+    <div class="pill-group" id="period-pills">
+      <button class="pill active" data-period="all">All Time</button>
+      <button class="pill" data-period="league">This League</button>
+      <button class="pill" data-period="month">This Month</button>
+    </div>
+
+    <div class="pill-group" id="sort-pills">
+      <button class="pill active" data-sort="trophies">Trophies</button>
+      <button class="pill" data-sort="return">Return %</button>
+      <button class="pill" data-sort="value">Portfolio</button>
+    </div>
+
+    <div class="search-wrap" style="max-width:200px;">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="lb-search" placeholder="Search trader…">
+    </div>
+  </div>
+
+  <!-- Podium (top 3) -->
+  <div class="lb-podium" id="lb-podium">
+    <div class="lb-skeleton" style="height:200px;border-radius:18px;"></div>
+    <div class="lb-skeleton" style="height:200px;border-radius:18px;"></div>
+    <div class="lb-skeleton" style="height:200px;border-radius:18px;"></div>
+  </div>
+
+  <!-- My rank card -->
+  <div id="my-rank-card" style="display:none;margin-bottom:16px;">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Your Position</div>
+    <div id="my-rank-row"></div>
+  </div>
+
+  <!-- Full leaderboard -->
+  <div id="lb-table">
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+    <div class="lb-skeleton"></div>
+  </div>
+
+  <!-- Load more -->
+  <div style="text-align:center;margin-top:16px;" id="load-more-wrap" style="display:none;">
+    <button class="btn btn-outline" id="load-more-btn">Load More</button>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let currentPeriod = 'all';
+let currentSort   = 'trophies';
+let lbOffset      = 0;
+let userId        = null;
+
+const DEMO_TRADERS = [
+  { id:'1', username:'cryptoking',  display_name:'Crypto King',  trophies:840, return_pct:38.2, total_trades:124, tier:'legend',  chips:2400 },
+  { id:'2', username:'wallstbull',  display_name:'WallSt Bull',  trophies:710, return_pct:31.7, total_trades:98,  tier:'expert',  chips:1800 },
+  { id:'3', username:'techtrader',  display_name:'Tech Trader',  trophies:580, return_pct:27.4, total_trades:87,  tier:'analyst', chips:1200 },
+  { id:'4', username:'divaqueen',   display_name:'Diva Queen',   trophies:440, return_pct:22.1, total_trades:65,  tier:'analyst', chips:900 },
+  { id:'5', username:'forexfox',    display_name:'Forex Fox',    trophies:380, return_pct:18.9, total_trades:156, tier:'trader',  chips:700 },
+  { id:'6', username:'stonksensei', display_name:'Stonk Sensei', trophies:310, return_pct:15.3, total_trades:44,  tier:'trader',  chips:600 },
+  { id:'7', username:'bullrun',     display_name:'Bull Run',     trophies:245, return_pct:12.0, total_trades:33,  tier:'trader',  chips:450 },
+  { id:'8', username:'macrohawk',   display_name:'Macro Hawk',   trophies:198, return_pct: 9.7, total_trades:78,  tier:'rookie',  chips:300 },
+  { id:'9', username:'etfking',     display_name:'ETF King',     trophies:160, return_pct: 8.1, total_trades:22,  tier:'rookie',  chips:200 },
+  { id:'10',username:'valueseeker', display_name:'Value Seeker', trophies:130, return_pct: 6.4, total_trades:17,  tier:'rookie',  chips:150 },
+];
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = (user) => {
+  userId = user.id;
+  loadLeaderboard(true);
+};
+
+async function loadLeaderboard(reset = false) {
+  if (reset) lbOffset = 0;
+
+  let data = [];
+  try {
+    let q = _db.from('profiles').select('id, username, display_name, trophies, return_pct, total_trades, win_trades, tier, chips');
+
+    if (currentSort === 'trophies') q = q.order('trophies', { ascending: false });
+    else if (currentSort === 'return') q = q.order('return_pct', { ascending: false });
+    else if (currentSort === 'value') q = q.order('portfolio_cash', { ascending: false });
+
+    q = q.range(lbOffset, lbOffset + 24);
+    const result = await q;
+    data = result.data || [];
+  } catch { data = []; }
+
+  if (!data.length) data = DEMO_TRADERS;
+
+  if (reset) {
+    renderPodium(data.slice(0, 3));
+    renderTable(data.slice(3), true);
+    renderMyRank(data);
+  } else {
+    renderTable(data, false);
+  }
+
+  if (data.length >= 25) {
+    document.getElementById('load-more-wrap').style.display = '';
+  } else {
+    document.getElementById('load-more-wrap').style.display = 'none';
+  }
+}
+
+function renderPodium(top3) {
+  const el = document.getElementById('lb-podium');
+  if (top3.length < 3) { el.innerHTML = ''; return; }
+
+  const order = [top3[1], top3[0], top3[2]];
+  const rankMap = [2, 1, 3];
+  const medals = { 1:'🥇', 2:'🥈', 3:'🥉' };
+  const bases  = { 1:'rank-1-base', 2:'rank-2-base', 3:'rank-3-base' };
+  const slots  = [0, 1, 2];
+
+  el.innerHTML = slots.map(i => {
+    const p    = order[i];
+    const rank = rankMap[i];
+    const init = (p.display_name || p.username || '?').slice(0, 2).toUpperCase();
+    const score = currentSort === 'trophies' ? p.trophies : currentSort === 'return' ? p.return_pct?.toFixed(1) + '%' : BSMarket.fmtPrice(p.portfolio_cash || 0);
+    return `
+      <div class="podium-slot">
+        <a class="podium-card rank-${rank}" href="/profile.html?user=${p.username}">
+          <div class="podium-card-bar"></div>
+          ${rank === 1 ? '<span class="podium-crown">👑</span>' : `<span style="font-size:22px;display:block;margin-bottom:4px;">${medals[rank]}</span>`}
+          <div class="podium-avatar">${init}</div>
+          <div class="podium-name">${p.display_name || p.username}</div>
+          <div class="podium-handle">@${p.username}</div>
+          <div class="podium-score">${score}</div>
+          <div class="podium-sub">${p.total_trades || 0} trades</div>
+        </a>
+        <div class="${bases[rank]}"></div>
+      </div>`;
+  }).join('');
+}
+
+function renderTable(data, reset = true) {
+  const el = document.getElementById('lb-table');
+  const rows = data.map((p, i) => {
+    const rank  = lbOffset + i + (reset ? 4 : lbOffset + 1);
+    const init  = (p.display_name || p.username || '?').slice(0, 2).toUpperCase();
+    const isMe  = userId && (p.id === userId);
+    const ret   = p.return_pct || 0;
+    const score = currentSort === 'trophies' ? p.trophies : currentSort === 'return' ? ret.toFixed(2) + '%' : BSMarket.fmtPrice(p.portfolio_cash || 0);
+    const tierBg = {
+      rookie:'rgba(255,255,255,0.05)', trader:'rgba(34,211,238,0.1)',
+      analyst:'rgba(59,130,246,0.1)', expert:'rgba(167,139,250,0.1)', legend:'rgba(245,158,11,0.1)'
+    }[p.tier] || 'rgba(255,255,255,0.05)';
+    const tierColor = {
+      rookie:'#5a6475', trader:'#22d3ee', analyst:'#3b82f6', expert:'#a78bfa', legend:'#f59e0b'
+    }[p.tier] || '#5a6475';
+
+    const barW = Math.min(((p.trophies || 0) / 1000) * 100, 100);
+
+    return `
+      <a class="lb-row${isMe ? ' is-me' : ''}${rank === 1 ? ' top-1' : ''}" href="/profile.html?user=${p.username}" style="animation-delay:${(i * 0.04).toFixed(2)}s; margin-bottom:8px; display:grid;">
+        <div class="lb-bar ${ret >= 0 ? 'pos' : 'neg'}" style="width:${barW}%;"></div>
+        <div class="lb-rank ${rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : ''}">
+          ${rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="lb-avatar">${init}</div>
+          <div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="lb-name">${p.display_name || p.username}</span>
+              <span class="lb-tier nav-tier ${p.tier||'rookie'}">${p.tier||'Rookie'}</span>
+              ${isMe ? '<span class="rank-delta new">YOU</span>' : ''}
+            </div>
+            <div class="lb-handle">@${p.username} · ${p.total_trades || 0} trades</div>
+          </div>
+        </div>
+        <div>
+          <div class="lb-record">${p.win_trades || 0}W / ${(p.total_trades||0) - (p.win_trades||0)}L</div>
+          <div style="font-size:10px;color:var(--text3);text-align:right;font-family:var(--font-mono);">${p.chips || 0} 🪙</div>
+        </div>
+        <div>
+          <div class="lb-gain ${ret >= 0 ? 'pos' : 'neg'}">${score}</div>
+          <div style="font-size:10px;color:${ret>=0?'var(--up)':'var(--dn)'};text-align:right;font-family:var(--font-mono);">
+            ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%
+          </div>
+        </div>
+      </a>`;
+  }).join('');
+
+  if (reset) el.innerHTML = rows;
+  else el.innerHTML += rows;
+}
+
+function renderMyRank(data) {
+  if (!userId) return;
+  const idx = data.findIndex(p => p.id === userId);
+  if (idx < 0) return;
+  const p    = data[idx];
+  const rank = idx + 1;
+  const init = (p.display_name || p.username || '?').slice(0, 2).toUpperCase();
+  const ret  = p.return_pct || 0;
+  document.getElementById('my-rank-card').style.display = '';
+  document.getElementById('my-rank-row').innerHTML = `
+    <div class="lb-row is-me" style="display:grid;margin-bottom:0;">
+      <div class="lb-rank ${rank<=3?['gold','silver','bronze'][rank-1]:''}">${rank<=3?['🥇','🥈','🥉'][rank-1]:rank}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="lb-avatar">${init}</div>
+        <div>
+          <span class="lb-name">${p.display_name || p.username}</span>
+          <span class="rank-delta new" style="margin-left:6px;">YOU</span>
+          <div class="lb-handle">@${p.username}</div>
+        </div>
+      </div>
+      <div class="lb-record">${p.win_trades||0}W / ${(p.total_trades||0)-(p.win_trades||0)}L</div>
+      <div class="lb-gain ${ret>=0?'pos':'neg'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+    </div>`;
+}
+
+// ─── Period / sort controls ───────────────────────────────────────
+document.getElementById('period-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  document.querySelectorAll('#period-pills .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPeriod = btn.dataset.period;
+  loadLeaderboard(true);
+});
+
+document.getElementById('sort-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  document.querySelectorAll('#sort-pills .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSort = btn.dataset.sort;
+  loadLeaderboard(true);
+});
+
+// ─── Search ───────────────────────────────────────────────────────
+let searchDebounce;
+document.getElementById('lb-search').addEventListener('input', async (e) => {
+  clearTimeout(searchDebounce);
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { loadLeaderboard(true); return; }
+  searchDebounce = setTimeout(async () => {
+    const { data } = await _db.from('profiles')
+      .select('id, username, display_name, trophies, return_pct, total_trades, win_trades, tier, chips')
+      .ilike('username', `%${q}%`).limit(20);
+    const results = data?.length ? data : DEMO_TRADERS.filter(t =>
+      t.username.includes(q) || t.display_name.toLowerCase().includes(q)
+    );
+    renderPodium(results.slice(0, 3));
+    renderTable(results.slice(3), true);
+  }, 350);
+});
+
+// ─── Load more ────────────────────────────────────────────────────
+document.getElementById('load-more-btn')?.addEventListener('click', () => {
+  lbOffset += 25;
+  loadLeaderboard(false);
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────
+setTimeout(() => {
+  if (!userId) loadLeaderboard(true);
+}, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: brickstocks-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: cron
+    name: brickstocks-daily
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cron_update.py
+    rootDir: backend
+    schedule: "0 11 * * *"   # 6 AM ET = 11:00 UTC
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false

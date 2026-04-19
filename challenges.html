@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Challenges · BrickStocks</title>
+<meta name="description" content="Complete daily and weekly trading challenges to earn Chips. Master every aspect of the markets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── Challenge banner ──────────────────────────── */
+.challenge-banner {
+  background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.05));
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: var(--radius-xl); padding: 24px 28px;
+  margin-bottom: 24px; display: flex; gap: 20px; align-items: center;
+}
+
+.cb-icon { font-size: 48px; flex-shrink: 0; }
+
+.cb-info { flex: 1; }
+.cb-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.cb-sub   { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+.cb-countdown {
+  text-align: center; flex-shrink: 0;
+}
+
+.cb-countdown-time {
+  font-family: var(--font-display); font-size: 28px;
+  font-weight: 800; letter-spacing: -1px; color: var(--accent);
+}
+
+.cb-countdown-lbl {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+/* ── Theme tabs ────────────────────────────────── */
+.theme-tabs {
+  display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;
+}
+
+.theme-tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text3); font-family: var(--font-display);
+  transition: all 0.15s;
+}
+
+.theme-tab.active {
+  background: var(--accent-dim); color: var(--accent); border-color: rgba(34,211,238,0.3);
+}
+
+.theme-tab:hover:not(.active) { color: var(--text); border-color: var(--border2); }
+
+/* ── Challenge card ────────────────────────────── */
+.challenge-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px 20px;
+  margin-bottom: 12px; position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.challenge-card:hover { border-color: var(--border2); }
+
+.challenge-card.completed {
+  border-color: rgba(34,197,94,0.3);
+  background: rgba(34,197,94,0.03);
+}
+
+.challenge-card.claimed { opacity: 0.6; }
+
+.challenge-card.locked { opacity: 0.45; }
+
+.cc-top {
+  display: flex; align-items: flex-start; gap: 14px;
+}
+
+.cc-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+
+.cc-info { flex: 1; min-width: 0; }
+
+.cc-title {
+  font-family: var(--font-display); font-size: 15px;
+  font-weight: 700; color: var(--text); margin-bottom: 3px;
+}
+
+.cc-desc { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 8px; }
+
+.cc-progress-wrap {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+}
+
+.cc-progress-bar-bg {
+  flex: 1; height: 6px; background: var(--bg4);
+  border-radius: 3px; overflow: hidden;
+}
+
+.cc-progress-fill {
+  height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width 0.6s cubic-bezier(.22,1,.36,1);
+}
+
+.cc-progress-fill.complete { background: var(--up); }
+
+.cc-progress-label {
+  font-family: var(--font-mono); font-size: 11px;
+  font-weight: 600; color: var(--text2); white-space: nowrap;
+}
+
+.cc-right {
+  text-align: right; flex-shrink: 0; display: flex;
+  flex-direction: column; align-items: flex-end; gap: 6px;
+}
+
+.cc-reward {
+  font-family: var(--font-display); font-size: 16px; font-weight: 800;
+  color: var(--gold);
+  display: flex; align-items: center; gap: 4px;
+}
+
+.cc-difficulty {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cc-difficulty.easy   { background: var(--up-dim);   color: var(--up); }
+.cc-difficulty.medium { background: var(--gold-dim);  color: var(--gold); }
+.cc-difficulty.hard   { background: var(--purple-dim); color: var(--purple); }
+.cc-difficulty.elite  { background: var(--dn-dim);    color: var(--dn); }
+
+.cc-claim-btn {
+  background: var(--up); color: #07090d;
+  font-family: var(--font-display); font-weight: 800; font-size: 12px;
+  padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+
+.cc-claim-btn:hover { background: #16a34a; }
+.cc-claim-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Coin fly animation ────────────────────────── */
+@keyframes coin-fly {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
+
+.coin-fly {
+  position: fixed; font-size: 24px; pointer-events: none; z-index: 9999;
+  animation: coin-fly 0.8s ease forwards;
+}
+
+/* ── Progress header ───────────────────────────── */
+.progress-header {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.ph-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+
+@media (max-width: 600px) { .ph-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Weekly progress bar ───────────────────────── */
+.weekly-bar-wrap {
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+
+.weekly-bar-label {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  margin-bottom: 8px;
+}
+
+.weekly-bar-bg {
+  height: 8px; background: var(--bg4); border-radius: 4px; overflow: hidden;
+}
+
+.weekly-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--up));
+  border-radius: 4px; transition: width 0.8s cubic-bezier(.22,1,.36,1);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html" class="active"><span class="nav-icon">⚡</span> Challenges</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Banner -->
+  <div class="challenge-banner">
+    <div class="cb-icon">⚡</div>
+    <div class="cb-info">
+      <div class="cb-title">Weekly Trading Challenges</div>
+      <div class="cb-sub">Complete daily missions to earn Chips. Stack wins to unlock the Grand Prize. Challenges reset every Monday at midnight.</div>
+    </div>
+    <div class="cb-countdown">
+      <div class="cb-countdown-time" id="challenge-countdown">—</div>
+      <div class="cb-countdown-lbl">Until Reset</div>
+    </div>
+  </div>
+
+  <!-- Progress header -->
+  <div class="progress-header">
+    <div class="ph-grid">
+      <div>
+        <div class="stat-tile-label">Completed</div>
+        <div class="stat-tile-val acc" id="prog-completed">—</div>
+      </div>
+      <div>
+        <div class="stat-tile-label">Chips Earned</div>
+        <div class="stat-tile-val" style="color:var(--gold);" id="prog-chips">—</div>
+      </div>
+      <div>
+        <div class="stat-tile-label">Current Streak</div>
+        <div class="stat-tile-val acc" id="prog-streak">—</div>
+      </div>
+      <div>
+        <div class="stat-tile-label">Total Chips</div>
+        <div class="stat-tile-val" style="color:var(--gold);" id="prog-total">—</div>
+      </div>
+    </div>
+    <div class="weekly-bar-wrap">
+      <div class="weekly-bar-label">
+        <span>Weekly Progress</span>
+        <span id="prog-bar-label">0 / 7 challenges</span>
+      </div>
+      <div class="weekly-bar-bg">
+        <div class="weekly-bar-fill" id="weekly-bar" style="width:0%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theme tabs -->
+  <div class="theme-tabs" id="theme-tabs">
+    <button class="theme-tab active" data-theme="all">⚡ All</button>
+    <button class="theme-tab" data-theme="daily">📅 Daily</button>
+    <button class="theme-tab" data-theme="weekly">🗓️ Weekly</button>
+    <button class="theme-tab" data-theme="milestone">🏆 Milestones</button>
+  </div>
+
+  <!-- Challenges list -->
+  <div id="challenges-list">
+    <div class="skeleton" style="height:110px;border-radius:14px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:110px;border-radius:14px;margin-bottom:12px;"></div>
+    <div class="skeleton" style="height:110px;border-radius:14px;margin-bottom:12px;"></div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+let userId      = null;
+let userProfile = null;
+let allChallenges   = [];
+let userProgress    = {};
+let currentTheme    = 'all';
+
+const DEMO_CHALLENGES = [
+  { id:'1', title:'First Trade', description:'Execute your first buy order on any asset.', icon:'🚀', difficulty:'easy', reward_chips:25, challenge_type:'daily', target_value:1, category:'trading' },
+  { id:'2', title:'Day Trader', description:'Make 3 trades in a single day.', icon:'⚡', difficulty:'easy', reward_chips:30, challenge_type:'daily', target_value:3, category:'trading' },
+  { id:'3', title:'Diversify', description:'Hold at least 3 different asset classes simultaneously.', icon:'🌍', difficulty:'medium', reward_chips:50, challenge_type:'weekly', target_value:3, category:'portfolio' },
+  { id:'4', title:'Green Day', description:'End the day with a positive portfolio return.', icon:'📈', difficulty:'medium', reward_chips:40, challenge_type:'daily', target_value:1, category:'performance' },
+  { id:'5', title:'10% Gain', description:'Achieve a 10% return from your starting capital.', icon:'💰', difficulty:'hard', reward_chips:100, challenge_type:'milestone', target_value:10, category:'performance' },
+  { id:'6', title:'Crypto Curious', description:'Make your first crypto trade.', icon:'🪙', difficulty:'easy', reward_chips:20, challenge_type:'daily', target_value:1, category:'trading' },
+  { id:'7', title:'Forex Explorer', description:'Execute a forex trade.', icon:'💱', difficulty:'easy', reward_chips:20, challenge_type:'daily', target_value:1, category:'trading' },
+  { id:'8', title:'AI Follower', description:'Execute a trade following an AI signal.', icon:'🤖', difficulty:'medium', reward_chips:45, challenge_type:'weekly', target_value:1, category:'research' },
+  { id:'9', title:'Week Winner', description:'Finish the week in the top 25% on the league leaderboard.', icon:'🏆', difficulty:'hard', reward_chips:150, challenge_type:'weekly', target_value:1, category:'competition' },
+  { id:'10', title:'Market Master', description:'Complete all 7 daily challenges in a single week.', icon:'👑', difficulty:'elite', reward_chips:500, challenge_type:'weekly', target_value:7, category:'mega' },
+  { id:'11', title:'Research Reader', description:'Visit the Research page 5 times this week.', icon:'🔬', difficulty:'easy', reward_chips:15, challenge_type:'weekly', target_value:5, category:'learning' },
+  { id:'12', title:'25% Return', description:'Achieve a 25% return on your portfolio.', icon:'🚀', difficulty:'elite', reward_chips:250, challenge_type:'milestone', target_value:25, category:'performance' },
+];
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = async (user, profile) => {
+  userId = user.id;
+  userProfile = profile;
+  document.getElementById('prog-total').textContent = (profile.chips || 0) + ' 🪙';
+  await loadChallenges();
+};
+
+async function loadChallenges() {
+  try {
+    const [{ data: chals }, { data: progress }] = await Promise.all([
+      _db.from('challenges').select('*').order('difficulty'),
+      _db.from('user_challenges').select('*').eq('user_id', userId)
+    ]);
+    allChallenges = chals?.length ? chals : DEMO_CHALLENGES;
+    (progress || []).forEach(p => { userProgress[p.challenge_id] = p; });
+  } catch {
+    allChallenges = DEMO_CHALLENGES;
+  }
+  renderChallenges();
+  updateProgress();
+}
+
+function renderChallenges() {
+  const el = document.getElementById('challenges-list');
+  let filtered = allChallenges;
+  if (currentTheme !== 'all') {
+    filtered = filtered.filter(c => c.challenge_type === currentTheme || (currentTheme === 'milestone' && c.challenge_type === 'milestone'));
+  }
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚡</span><h3>No challenges in this category</h3></div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map((c, i) => {
+    const prog     = userProgress[c.id];
+    const progress = prog?.progress || 0;
+    const completed = prog?.completed || false;
+    const claimed   = prog?.claimed || false;
+    const pct = Math.min((progress / (c.target_value || 1)) * 100, 100);
+
+    const statusClass = claimed ? 'claimed' : completed ? 'completed' : '';
+
+    return `
+      <div class="challenge-card ${statusClass} anim-fadeInUp" style="animation-delay:${(i*0.04).toFixed(2)}s">
+        <div class="cc-top">
+          <div class="cc-icon">${c.icon || '⚡'}</div>
+          <div class="cc-info">
+            <div class="cc-title">
+              ${c.title}
+              ${completed ? '<span style="color:var(--up);font-size:14px;margin-left:6px;">✓</span>' : ''}
+            </div>
+            <div class="cc-desc">${c.description}</div>
+            <div class="cc-progress-wrap">
+              <div class="cc-progress-bar-bg">
+                <div class="cc-progress-fill ${completed ? 'complete' : ''}" style="width:${pct}%;"></div>
+              </div>
+              <div class="cc-progress-label">${progress}/${c.target_value || 1}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="badge badge-muted" style="font-size:9px;">${c.challenge_type}</span>
+              ${c.category ? `<span class="badge badge-accent" style="font-size:9px;">${c.category}</span>` : ''}
+            </div>
+          </div>
+          <div class="cc-right">
+            <div class="cc-reward">+${c.reward_chips} 🪙</div>
+            <div class="cc-difficulty ${c.difficulty}">${c.difficulty}</div>
+            ${completed && !claimed ? `<button class="cc-claim-btn" onclick="claimChallenge('${c.id}', ${c.reward_chips}, this)">Claim!</button>` : ''}
+            ${claimed ? '<div style="font-size:11px;color:var(--up);font-family:var(--font-mono);">✅ Claimed</div>' : ''}
+            ${!completed ? `<a href="${getChallengeLink(c)}" class="btn btn-outline btn-sm">Go Trade</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function getChallengeLink(c) {
+  if (c.category === 'trading' || c.category === 'research') return '/trade.html';
+  if (c.category === 'research') return '/research.html';
+  if (c.category === 'competition') return '/league.html';
+  return '/trade.html';
+}
+
+function updateProgress() {
+  const completed = Object.values(userProgress).filter(p => p.completed).length;
+  const chipsEarned = Object.values(userProgress)
+    .filter(p => p.claimed)
+    .reduce((sum, p) => {
+      const chall = allChallenges.find(c => c.id === p.challenge_id);
+      return sum + (chall?.reward_chips || 0);
+    }, 0);
+
+  const total = allChallenges.filter(c => c.challenge_type !== 'milestone').length;
+
+  document.getElementById('prog-completed').textContent = completed + ' / ' + total;
+  document.getElementById('prog-chips').textContent     = '+' + chipsEarned + ' 🪙';
+  document.getElementById('prog-streak').textContent    = userProfile?.trophies ? Math.floor(userProfile.trophies / 10) + ' days' : '—';
+
+  const weeklyPct = total > 0 ? (completed / total * 100) : 0;
+  document.getElementById('weekly-bar').style.width     = weeklyPct + '%';
+  document.getElementById('prog-bar-label').textContent = completed + ' / ' + total + ' challenges';
+}
+
+async function claimChallenge(challengeId, chips, btn) {
+  if (!userId) return;
+  btn.disabled = true; btn.textContent = 'Claiming…';
+
+  await _db.from('user_challenges')
+    .update({ claimed: true })
+    .eq('user_id', userId)
+    .eq('challenge_id', challengeId);
+
+  await _db.rpc('add_chips', { p_user_id: userId, p_amount: chips });
+
+  // Coin fly animation
+  const rect = btn.getBoundingClientRect();
+  for (let i = 0; i < 6; i++) {
+    const coin = document.createElement('div');
+    coin.className = 'coin-fly';
+    coin.textContent = '🪙';
+    coin.style.left = rect.left + rect.width/2 + 'px';
+    coin.style.top  = rect.top + 'px';
+    coin.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+    coin.style.setProperty('--dy', '-' + (80 + Math.random() * 60) + 'px');
+    coin.style.animationDelay = (i * 0.08) + 's';
+    document.body.appendChild(coin);
+    setTimeout(() => coin.remove(), 1000);
+  }
+
+  if (userProfile) userProfile.chips = (userProfile.chips || 0) + chips;
+  document.getElementById('prog-total').textContent = (userProfile?.chips || 0) + ' 🪙';
+
+  userProgress[challengeId] = { ...userProgress[challengeId], claimed: true };
+  BSAuth.toast(`🎉 Claimed ${chips} Chips!`, 'success');
+  renderChallenges();
+  updateProgress();
+}
+
+// ─── Theme tabs ───────────────────────────────────────────────────
+document.getElementById('theme-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.theme-tab');
+  if (!btn) return;
+  document.querySelectorAll('.theme-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTheme = btn.dataset.theme;
+  renderChallenges();
+});
+
+// ─── Countdown ────────────────────────────────────────────────────
+function startChallengeCountdown() {
+  const now  = new Date();
+  const next = new Date(now);
+  next.setDate(next.getDate() + (1 - now.getDay() + 7) % 7 || 7);
+  next.setHours(0, 0, 0, 0);
+
+  function tick() {
+    const diff = next - Date.now();
+    if (diff <= 0) { document.getElementById('challenge-countdown').textContent = '00:00:00'; return; }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('challenge-countdown').textContent = d > 0 ? `${d}d ${h}h` : `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+  }
+  tick(); setInterval(tick, 60000);
+}
+
+// ─── Load demo if not logged in ───────────────────────────────────
+setTimeout(() => {
+  if (!userId) {
+    allChallenges = DEMO_CHALLENGES;
+    renderChallenges();
+    document.getElementById('prog-completed').textContent = '0 / ' + DEMO_CHALLENGES.filter(c => c.challenge_type !== 'milestone').length;
+    document.getElementById('prog-chips').textContent = '+0 🪙';
+    document.getElementById('prog-streak').textContent = '—';
+    document.getElementById('prog-total').textContent = '—';
+  }
+}, 2000);
+
+startChallengeCountdown();
+</script>
+</body>
+</html>

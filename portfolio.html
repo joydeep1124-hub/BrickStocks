@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Portfolio · BrickStocks</title>
+<meta name="description" content="Track your virtual portfolio performance, holdings, and trade history.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/db.js"></script>
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/mobile.css">
+<style>
+/* ── Portfolio hero card ────────────────────────── */
+.portfolio-hero {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 28px;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+}
+
+.portfolio-hero::before {
+  content: ''; position: absolute; top: -60px; right: -60px;
+  width: 240px; height: 240px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,211,238,0.07), transparent 70%);
+  pointer-events: none;
+}
+
+.ph-total-label {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.ph-total {
+  font-family: var(--font-display); font-size: 42px;
+  font-weight: 800; letter-spacing: -2px; color: var(--text);
+  margin-bottom: 6px;
+}
+
+.ph-return {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ph-return-val {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 800; letter-spacing: -0.5px;
+}
+
+.ph-return-badge {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+}
+
+.ph-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  padding-top: 20px; border-top: 1px solid var(--border);
+}
+
+.ph-stat-val {
+  font-family: var(--font-display); font-size: 18px; font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.ph-stat-lbl {
+  font-size: 11px; color: var(--text3); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px;
+}
+
+@media (max-width: 600px) {
+  .ph-stats { grid-template-columns: 1fr 1fr; }
+  .ph-total { font-size: 32px; }
+}
+
+/* ── Holdings table ─────────────────────────────── */
+.holdings-header {
+  display: grid; gap: 12px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 80px;
+  padding: 8px 16px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+.holding-item {
+  display: grid; gap: 12px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 80px;
+  align-items: center; padding: 14px 16px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); margin-bottom: 8px;
+  transition: border-color 0.15s; cursor: pointer; text-decoration: none; color: inherit;
+}
+
+.holding-item:hover { border-color: var(--border2); }
+
+.hi-sym {
+  font-family: var(--font-display); font-size: 15px;
+  font-weight: 800; color: var(--text);
+}
+
+.hi-name { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.hi-val {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text);
+}
+
+.hi-pnl {
+  font-family: var(--font-display); font-size: 14px; font-weight: 800;
+}
+
+/* Allocation bar */
+.alloc-bar {
+  width: 64px; height: 6px; background: var(--bg4);
+  border-radius: 3px; overflow: hidden;
+}
+
+.alloc-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+
+/* ── Trade history ──────────────────────────────── */
+.trade-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr 1fr 100px;
+  gap: 12px; align-items: center; padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px; cursor: pointer; transition: background 0.1s;
+}
+
+.trade-row:hover { background: rgba(255,255,255,0.02); }
+.trade-row:last-child { border-bottom: none; }
+
+.trade-action-buy  { color: var(--up); font-weight: 700; font-family: var(--font-mono); }
+.trade-action-sell { color: var(--dn); font-weight: 700; font-family: var(--font-mono); }
+
+/* ── Performance chart ──────────────────────────── */
+.perf-chart-wrap {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  margin-bottom: 20px;
+}
+
+#perf-chart { height: 220px; }
+
+/* ── Allocation donut ───────────────────────────── */
+.alloc-section {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 600px) { .alloc-section { grid-template-columns: 1fr; } }
+
+.alloc-legend { display: flex; flex-direction: column; gap: 8px; }
+
+.alloc-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px;
+}
+
+.alloc-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+
+.alloc-label { flex: 1; color: var(--text2); }
+.alloc-pct   { font-family: var(--font-mono); font-weight: 700; color: var(--text); }
+.alloc-val   { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <div class="nav-logo-mark">📈</div>
+      <span class="nav-logo-text">Brick<span>Stocks</span></span>
+    </a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/trade.html"><span class="nav-icon">💹</span> Trade</a></li>
+      <li><a href="/portfolio.html" class="active"><span class="nav-icon">📊</span> Portfolio</a></li>
+      <li><a href="/league.html"><span class="nav-icon">🏆</span> League</a></li>
+      <li><a href="/leaderboard.html"><span class="nav-icon">🏅</span> Rankings</a></li>
+      <li><a href="/research.html"><span class="nav-icon">🔬</span> Research</a></li>
+      <li><a href="/agent.html"><span class="nav-icon">🤖</span> AI Agent</a></li>
+      <li><a href="/challenges.html"><span class="nav-icon">⚡</span> Challenges</a></li>
+      <li><a href="/watchlist.html"><span class="nav-icon">👁️</span> Watchlist</a></li>
+    </ul>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="nav-auth-area"></div>
+  </div>
+</nav>
+
+<div class="page-wrap-md" style="padding-top:72px;">
+
+  <!-- Not logged in state -->
+  <div id="not-logged-in" class="empty-state" style="display:none;padding:80px 0;">
+    <span class="empty-state-icon">📊</span>
+    <h3>Sign in to view your portfolio</h3>
+    <p>Track your virtual holdings, P&amp;L, and trade history.</p>
+    <button class="btn btn-primary" onclick="window.BSAuth?.open()">Get Started Free</button>
+  </div>
+
+  <!-- Portfolio content -->
+  <div id="portfolio-content" style="display:none;">
+
+    <div class="page-header" style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <h1 class="page-title">📊 My Portfolio</h1>
+        <a href="/trade.html" class="btn btn-primary">+ Trade</a>
+      </div>
+    </div>
+
+    <!-- Hero stats card -->
+    <div class="portfolio-hero" id="portfolio-hero">
+      <div class="ph-total-label">Total Portfolio Value</div>
+      <div class="ph-total" id="ph-total">$—</div>
+      <div class="ph-return">
+        <div class="ph-return-val" id="ph-return-val">—</div>
+        <div class="ph-return-badge" id="ph-return-badge">—</div>
+        <div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);">All time</div>
+      </div>
+      <div class="ph-stats">
+        <div>
+          <div class="ph-stat-val" id="ph-cash">—</div>
+          <div class="ph-stat-lbl">Cash</div>
+        </div>
+        <div>
+          <div class="ph-stat-val" id="ph-invested">—</div>
+          <div class="ph-stat-lbl">Invested</div>
+        </div>
+        <div>
+          <div class="ph-stat-val" id="ph-trades">—</div>
+          <div class="ph-stat-lbl">Total Trades</div>
+        </div>
+        <div>
+          <div class="ph-stat-val" id="ph-winrate">—</div>
+          <div class="ph-stat-lbl">Win Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance chart -->
+    <div class="perf-chart-wrap">
+      <div class="card-header" style="margin-bottom:14px;">
+        <div class="card-title">📈 Portfolio Performance</div>
+        <div class="pill-group">
+          <button class="pill active" data-range="1M">1M</button>
+          <button class="pill" data-range="3M">3M</button>
+          <button class="pill" data-range="1Y">1Y</button>
+          <button class="pill" data-range="ALL">All</button>
+        </div>
+      </div>
+      <div id="perf-chart"></div>
+    </div>
+
+    <!-- Allocation + breakdown -->
+    <div class="alloc-section">
+      <div class="card">
+        <div class="card-header" style="margin-bottom:14px;">
+          <div class="card-title">🍩 Allocation</div>
+        </div>
+        <div style="position:relative;width:160px;height:160px;margin:0 auto 16px;">
+          <canvas id="alloc-canvas" width="160" height="160"></canvas>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--text);" id="alloc-center-val">—</div>
+            <div style="font-size:10px;color:var(--text3);">invested</div>
+          </div>
+        </div>
+        <div class="alloc-legend" id="alloc-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="margin-bottom:14px;">
+          <div class="card-title">📊 By Asset Class</div>
+        </div>
+        <div id="asset-class-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- Holdings tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="holdings">Holdings</button>
+      <button class="tab-btn" data-tab="history">Trade History</button>
+      <button class="tab-btn" data-tab="watchlist">Watchlist</button>
+    </div>
+
+    <!-- Holdings tab -->
+    <div class="tab-panel active" id="panel-holdings">
+      <div class="holdings-header" style="display:none;" id="holdings-header">
+        <div>Symbol</div><div>Price</div><div>Qty</div><div>Value</div><div>P&amp;L</div><div>Alloc</div>
+      </div>
+      <div id="holdings-list">
+        <div class="skeleton" style="height:72px;margin-bottom:8px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:72px;margin-bottom:8px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:72px;border-radius:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Trade history tab -->
+    <div class="tab-panel" id="panel-history">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="trade-row" style="background:var(--bg4);font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;cursor:default;border-radius:0;">
+          <div>Symbol</div><div>Action</div><div>Price</div><div>Value</div><div>Date</div>
+        </div>
+        <div id="trade-history-list">
+          <div class="skeleton" style="height:48px;margin:8px;border-radius:8px;"></div>
+          <div class="skeleton" style="height:48px;margin:8px;border-radius:8px;"></div>
+          <div class="skeleton" style="height:48px;margin:8px;border-radius:8px;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:12px;" id="load-more-wrap" style="display:none;">
+        <button class="btn btn-outline" id="load-more-btn">Load More</button>
+      </div>
+    </div>
+
+    <!-- Watchlist tab -->
+    <div class="tab-panel" id="panel-watchlist">
+      <div id="watchlist-list">
+        <div class="skeleton" style="height:64px;margin-bottom:8px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:64px;margin-bottom:8px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:64px;border-radius:14px;"></div>
+      </div>
+      <div style="margin-top:16px;text-align:center;">
+        <a href="/trade.html" class="btn btn-outline">➕ Add to Watchlist</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/auth.js"></script>
+<script src="/js/market.js"></script>
+<script src="/js/mobile-nav.js" defer></script>
+<script>
+const STARTING_CAPITAL = 10000;
+let userId = null;
+let allHoldings = [];
+let tradeHistoryOffset = 0;
+
+const ALLOC_COLORS = ['#22d3ee','#22c55e','#f59e0b','#a78bfa','#ef4444','#3b82f6','#fb923c','#e879f9'];
+
+window.BSAuth = window.BSAuth || {};
+window.BSAuth.onReady = async (user, profile) => {
+  userId = user.id;
+  document.getElementById('not-logged-in').style.display = 'none';
+  document.getElementById('portfolio-content').style.display = '';
+  await loadPortfolio(profile);
+  await loadTradeHistory();
+  await loadWatchlist();
+  initPerfChart();
+};
+
+// ─── Load portfolio ───────────────────────────────────────────────
+async function loadPortfolio(profile) {
+  const cash = profile?.portfolio_cash || 0;
+  const { data: holdings } = await _db.from('holdings').select('*').eq('user_id', userId);
+  allHoldings = holdings || [];
+
+  // Fetch current prices
+  const symbols = allHoldings.map(h => h.symbol);
+  let priceMap = {};
+  if (symbols.length) {
+    try {
+      const quotes = await BSMarket.getBulkQuotes(symbols);
+      priceMap = quotes;
+    } catch {}
+  }
+
+  // Calculate portfolio value
+  let investedValue = 0;
+  allHoldings = allHoldings.map(h => {
+    const currentPrice = priceMap[h.symbol]?.c || priceMap[h.symbol]?.price || h.current_price || h.avg_cost;
+    const value = currentPrice * h.quantity;
+    const pnl   = (currentPrice - h.avg_cost) * h.quantity;
+    const pnlPct = ((currentPrice - h.avg_cost) / h.avg_cost) * 100;
+    investedValue += value;
+    return { ...h, current_price: currentPrice, value, pnl, pnlPct };
+  });
+
+  const totalValue = cash + investedValue;
+  const totalReturn = totalValue - STARTING_CAPITAL;
+  const totalReturnPct = (totalReturn / STARTING_CAPITAL) * 100;
+
+  // Hero
+  document.getElementById('ph-total').textContent    = BSMarket.fmtPrice(totalValue);
+  document.getElementById('ph-cash').textContent     = BSMarket.fmtPrice(cash);
+  document.getElementById('ph-invested').textContent = BSMarket.fmtPrice(investedValue);
+  document.getElementById('ph-trades').textContent   = (profile?.total_trades || 0).toLocaleString();
+  const winRate = profile?.total_trades > 0 ? ((profile.win_trades || 0) / profile.total_trades * 100).toFixed(0) : '—';
+  document.getElementById('ph-winrate').textContent = winRate !== '—' ? winRate + '%' : '—';
+
+  const rvEl = document.getElementById('ph-return-val');
+  const rbEl = document.getElementById('ph-return-badge');
+  rvEl.textContent = `${totalReturn >= 0 ? '+' : ''}${BSMarket.fmtPrice(Math.abs(totalReturn))}`;
+  rvEl.className = `ph-return-val ${totalReturn >= 0 ? 'chg-up' : 'chg-dn'}`;
+  rbEl.textContent = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`;
+  rbEl.className = `ph-return-badge ${totalReturnPct >= 0 ? 'badge-up' : 'badge-dn'}`;
+
+  renderHoldings(totalValue);
+  renderAllocation(allHoldings, investedValue, totalValue);
+}
+
+function renderHoldings(totalValue) {
+  const el = document.getElementById('holdings-list');
+  if (!allHoldings.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-state-icon">📦</span>
+        <h3>No holdings yet</h3>
+        <p>Head to the Trade page to make your first investment.</p>
+        <a href="/trade.html" class="btn btn-primary">Start Trading</a>
+      </div>`;
+    return;
+  }
+  document.getElementById('holdings-header').style.display = '';
+  el.innerHTML = allHoldings
+    .sort((a, b) => b.value - a.value)
+    .map(h => {
+      const allocPct = totalValue > 0 ? ((h.value / totalValue) * 100).toFixed(1) : 0;
+      return `
+      <a class="holding-item anim-fadeInUp" href="/trade.html?symbol=${h.symbol}&type=${h.asset_type}">
+        <div>
+          <div class="hi-sym">${h.symbol}</div>
+          <div class="hi-name">${BSMarket.assetIcon(h.asset_type)} ${BSMarket.assetLabel(h.asset_type)}</div>
+        </div>
+        <div class="hi-val">${BSMarket.fmtPrice(h.current_price, h.asset_type === 'forex' ? 4 : 2)}</div>
+        <div class="hi-val">${h.quantity}</div>
+        <div class="hi-val">${BSMarket.fmtPrice(h.value)}</div>
+        <div class="hi-pnl ${h.pnl >= 0 ? 'chg-up' : 'chg-dn'}">
+          ${h.pnl >= 0 ? '+' : ''}${BSMarket.fmtPrice(Math.abs(h.pnl))}<br>
+          <span style="font-size:10px;opacity:0.8;">${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(2)}%</span>
+        </div>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:4px;">${allocPct}%</div>
+          <div class="alloc-bar"><div class="alloc-fill" style="width:${allocPct}%;"></div></div>
+        </div>
+      </a>`;
+    }).join('');
+}
+
+function renderAllocation(holdings, invested, total) {
+  const canvas = document.getElementById('alloc-canvas');
+  const ctx    = canvas.getContext('2d');
+  const cx = 80, cy = 80, r = 60, innerR = 38;
+
+  ctx.clearRect(0, 0, 160, 160);
+
+  if (!holdings.length) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1a2030'; ctx.lineWidth = 22; ctx.stroke();
+    document.getElementById('alloc-center-val').textContent = '$0';
+    return;
+  }
+
+  const sorted = [...holdings].sort((a, b) => b.value - a.value);
+  let angle = -Math.PI / 2;
+
+  sorted.forEach((h, i) => {
+    const slice = (h.value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = ALLOC_COLORS[i % ALLOC_COLORS.length];
+    ctx.fill();
+    angle += slice;
+  });
+
+  // Inner hole
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.fillStyle = '#13181f'; ctx.fill();
+
+  document.getElementById('alloc-center-val').textContent = BSMarket.fmtPrice(invested);
+
+  // Legend
+  document.getElementById('alloc-legend').innerHTML = sorted.slice(0, 6).map((h, i) => `
+    <div class="alloc-row">
+      <div class="alloc-dot" style="background:${ALLOC_COLORS[i % ALLOC_COLORS.length]};"></div>
+      <div class="alloc-label">${h.symbol}</div>
+      <div class="alloc-pct">${((h.value / total) * 100).toFixed(1)}%</div>
+    </div>`).join('');
+
+  // Asset class breakdown
+  const byClass = {};
+  holdings.forEach(h => {
+    const t = h.asset_type || 'other';
+    byClass[t] = (byClass[t] || 0) + h.value;
+  });
+
+  document.getElementById('asset-class-breakdown').innerHTML = Object.entries(byClass)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, val]) => {
+      const pct = total > 0 ? ((val / total) * 100) : 0;
+      return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);">${BSMarket.assetIcon(type)} ${BSMarket.assetLabel(type)}</div>
+          <div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text);">${BSMarket.fmtPrice(val)}</div>
+        </div>
+        <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }).join('') || '<div style="font-size:12px;color:var(--text3);">No holdings yet.</div>';
+}
+
+// ─── Performance chart ────────────────────────────────────────────
+function initPerfChart() {
+  const container = document.getElementById('perf-chart');
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth, height: 220,
+    layout: { background: { color: 'transparent' }, textColor: '#8b949e' },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
+    timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true },
+  });
+
+  const area = chart.addAreaSeries({
+    lineColor: '#22d3ee', topColor: 'rgba(34,211,238,0.2)',
+    bottomColor: 'rgba(34,211,238,0)', lineWidth: 2,
+  });
+
+  window.addEventListener('resize', () => chart.applyOptions({ width: container.clientWidth }));
+
+  // Load portfolio history from DB
+  loadPerfHistory(area);
+}
+
+async function loadPerfHistory(series) {
+  try {
+    const { data } = await _db.from('portfolio_snapshots')
+      .select('snapshotted_at, total_value')
+      .eq('user_id', userId)
+      .order('snapshotted_at', { ascending: true })
+      .limit(365);
+
+    if (data?.length) {
+      series.setData(data.map(d => ({
+        time: Math.floor(new Date(d.snapshotted_at).getTime() / 1000),
+        value: d.total_value
+      })));
+    } else {
+      // Demo data
+      const now = Math.floor(Date.now() / 1000);
+      const demo = [];
+      let val = 10000;
+      for (let i = 30; i >= 0; i--) {
+        val += (Math.random() - 0.42) * 200;
+        demo.push({ time: now - i * 86400, value: Math.max(val, 5000) });
+      }
+      series.setData(demo);
+    }
+  } catch {
+    const now = Math.floor(Date.now() / 1000);
+    const demo = [];
+    let val = 10000;
+    for (let i = 30; i >= 0; i--) {
+      val += (Math.random() - 0.42) * 200;
+      demo.push({ time: now - i * 86400, value: Math.max(val, 5000) });
+    }
+    series.setData(demo);
+  }
+}
+
+// ─── Trade history ────────────────────────────────────────────────
+async function loadTradeHistory() {
+  const el = document.getElementById('trade-history-list');
+  const { data, count } = await _db.from('trades').select('*', { count: 'exact' })
+    .eq('user_id', userId)
+    .order('executed_at', { ascending: false })
+    .range(0, 24);
+
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;font-size:13px;color:var(--text3);">No trades yet.</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(t => `
+    <div class="trade-row" onclick="window.location='/trade.html?symbol=${t.symbol}&type=${t.asset_type}'">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--font-display);font-size:14px;font-weight:700;">${t.symbol}</span>
+        <span style="font-size:10px;color:var(--text3);font-family:var(--font-mono);">${t.asset_type}</span>
+      </div>
+      <div class="trade-action-${t.action}">${t.action.toUpperCase()}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;">${BSMarket.fmtPrice(t.price, 2)}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;">${BSMarket.fmtPrice(t.total_value)}</div>
+      <div style="font-size:11px;color:var(--text3);">${new Date(t.executed_at).toLocaleDateString()}</div>
+    </div>`).join('');
+
+  if (count > 25) {
+    document.getElementById('load-more-wrap').style.display = '';
+    document.getElementById('load-more-btn').addEventListener('click', loadMoreHistory);
+  }
+}
+
+async function loadMoreHistory() {
+  tradeHistoryOffset += 25;
+  const { data } = await _db.from('trades').select('*')
+    .eq('user_id', userId).order('executed_at', { ascending: false })
+    .range(tradeHistoryOffset, tradeHistoryOffset + 24);
+  const el = document.getElementById('trade-history-list');
+  if (!data?.length) { document.getElementById('load-more-wrap').style.display = 'none'; return; }
+  el.innerHTML += data.map(t => `
+    <div class="trade-row" onclick="window.location='/trade.html?symbol=${t.symbol}&type=${t.asset_type}'">
+      <div><span style="font-family:var(--font-display);font-size:14px;font-weight:700;">${t.symbol}</span></div>
+      <div class="trade-action-${t.action}">${t.action.toUpperCase()}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;">${BSMarket.fmtPrice(t.price, 2)}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;">${BSMarket.fmtPrice(t.total_value)}</div>
+      <div style="font-size:11px;color:var(--text3);">${new Date(t.executed_at).toLocaleDateString()}</div>
+    </div>`).join('');
+}
+
+// ─── Watchlist ────────────────────────────────────────────────────
+async function loadWatchlist() {
+  const el = document.getElementById('watchlist-list');
+  const { data } = await _db.from('watchlist').select('*').eq('user_id', userId).order('added_at', { ascending: false });
+  if (!data?.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">👁️</span><h3>Watchlist is empty</h3><p>Add stocks to watch from the Trade page.</p></div>';
+    return;
+  }
+  el.innerHTML = data.map(w => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <span style="font-family:var(--font-display);font-size:14px;font-weight:700;">${w.symbol}</span>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-left:8px;">${w.asset_type}</span>
+      </div>
+      <a href="/trade.html?symbol=${w.symbol}&type=${w.asset_type}" class="btn btn-primary btn-sm">Trade</a>
+      <button class="btn btn-ghost btn-sm" style="color:var(--dn);" onclick="removeWatchlist('${w.id}', this)">✕</button>
+    </div>`).join('');
+}
+
+async function removeWatchlist(id, btn) {
+  btn.disabled = true;
+  await _db.from('watchlist').delete().eq('id', id);
+  loadWatchlist();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Performance range
+document.querySelectorAll('[data-range]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Check auth on load
+setTimeout(() => {
+  if (!window.BSAuth?.getUser()) {
+    document.getElementById('not-logged-in').style.display = '';
+    document.getElementById('portfolio-content').style.display = 'none';
+  }
+}, 1500);
+</script>
+</body>
+</html>
