@@ -113,3 +113,23 @@
     }, { passive: true });
   });
 })();
+
+/* ── More dropdown (desktop) ─────────────────────────── */
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.querySelector('.nav-more-btn');
+    const dd  = document.getElementById('nav-more-dd');
+    if (!btn || !dd) return;
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      btn.classList.toggle('open');
+      dd.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function () {
+      btn.classList.remove('open');
+      dd.classList.remove('open');
+    });
+  });
+})();

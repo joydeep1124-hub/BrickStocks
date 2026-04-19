@@ -780,3 +780,43 @@ nav {
 
 .flash-up { animation: flash-up 0.5s ease; }
 .flash-dn { animation: flash-dn 0.5s ease; }
+
+/* ── More dropdown nav ───────────────────────────────── */
+.nav-more-wrap {
+  position: relative; list-style: none;
+}
+
+.nav-more-btn {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  background: none; border: none; cursor: pointer;
+  padding: 6px 12px; border-radius: 7px;
+  transition: all 0.15s; font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+.nav-more-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.nav-more-btn.open  { color: var(--text); background: rgba(255,255,255,0.05); }
+
+.nav-more-arrow { font-size: 10px; transition: transform 0.2s; }
+.nav-more-btn.open .nav-more-arrow { transform: rotate(180deg); }
+
+.nav-more-dd {
+  display: none; position: absolute; top: calc(100% + 8px); left: 0;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); min-width: 180px;
+  padding: 6px; z-index: 300; box-shadow: var(--shadow-lg);
+}
+
+.nav-more-dd.open { display: block; }
+
+.nav-dd-lnk {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  text-decoration: none; transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.nav-dd-lnk:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-dd-lnk span  { font-size: 15px; width: 20px; text-align: center; }
