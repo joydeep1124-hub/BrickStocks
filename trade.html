@@ -637,6 +637,21 @@ async function loadChart(resolution = 'D', from = null) {
     priceSeries.setData(data.map(d => ({ time: d.time, value: d.close })));
   }
   chartInstance.timeScale().fitContent();
+
+  // Show demo label if using fallback data
+  let demoLabel = document.getElementById('chart-demo-label');
+  if (candles._demo) {
+    if (!demoLabel) {
+      demoLabel = document.createElement('div');
+      demoLabel.id = 'chart-demo-label';
+      demoLabel.style.cssText = 'position:absolute;top:8px;right:8px;font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg4);padding:3px 8px;border-radius:5px;z-index:10;border:1px solid var(--border);';
+      demoLabel.textContent = '⚠ Demo data — market closed or backend offline';
+      document.querySelector('.chart-wrap').style.position = 'relative';
+      document.querySelector('.chart-wrap').appendChild(demoLabel);
+    }
+  } else if (demoLabel) {
+    demoLabel.remove();
+  }
 }
 
 // ─── Load quote ───────────────────────────────────────────────────
