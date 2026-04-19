@@ -419,14 +419,60 @@ async function loadNews() {
   }
 }
 
+function newsVisual(n) {
+  const headline = (n.headline || n.title || '').toLowerCase();
+  const cat = n.category || '';
+
+  const VISUALS = [
+    { keys:['federal reserve','fed','rate','inflation','interest','fomc','powell'],
+      icon:'🏛️', label:'MACRO', grad:'linear-gradient(135deg,#0f2847 0%,#1a3a6b 50%,#0d1f3c 100%)', accent:'#60a5fa' },
+    { keys:['nvidia','amd','intel','chip','semiconductor','ai chip','gpu'],
+      icon:'⚡', label:'CHIPS', grad:'linear-gradient(135deg,#1a0f2e 0%,#2d1b69 50%,#0f0a1e 100%)', accent:'#a78bfa' },
+    { keys:['bitcoin','btc','crypto','ethereum','eth','solana','defi','web3','nft'],
+      icon:'₿', label:'CRYPTO', grad:'linear-gradient(135deg,#1c1000 0%,#3d2800 50%,#1a0e00 100%)', accent:'#f59e0b' },
+    { keys:['gold','silver','commodity','oil','wti','opec','crude','energy'],
+      icon:'🥇', label:'COMMODITIES', grad:'linear-gradient(135deg,#1c1500 0%,#3a2800 50%,#1a1200 100%)', accent:'#fbbf24' },
+    { keys:['tesla','ev','electric vehicle','auto','ford','gm','rivian'],
+      icon:'⚡🚗', label:'AUTO', grad:'linear-gradient(135deg,#1a0a0a 0%,#3d1515 50%,#1a0808 100%)', accent:'#f43f5e' },
+    { keys:['apple','aapl','iphone','mac','ipad','app store'],
+      icon:'🍎', label:'APPLE', grad:'linear-gradient(135deg,#0a1a1a 0%,#0d2b2b 50%,#081414 100%)', accent:'#34d399' },
+    { keys:['meta','facebook','instagram','zuckerberg','social media','reels'],
+      icon:'🌐', label:'META', grad:'linear-gradient(135deg,#0a0f2e 0%,#1a2060 50%,#080d24 100%)', accent:'#818cf8' },
+    { keys:['amazon','aws','cloud','microsoft','azure','google cloud'],
+      icon:'☁️', label:'CLOUD', grad:'linear-gradient(135deg,#0a1a10 0%,#0f3020 50%,#081510 100%)', accent:'#10b981' },
+    { keys:['microsoft','msft','windows','copilot','openai','chatgpt','gpt','llm','artificial intelligence'],
+      icon:'🤖', label:'AI', grad:'linear-gradient(135deg,#0f1a2e 0%,#1a2d50 50%,#0a1220 100%)', accent:'#38bdf8' },
+    { keys:['jpmorgan','goldman','bank','financial','morgan stanley','hedge fund','correction','market'],
+      icon:'🏦', label:'FINANCE', grad:'linear-gradient(135deg,#0f1a0a 0%,#1a3010 50%,#0a1508 100%)', accent:'#22c55e' },
+    { keys:['amazon','amzn','prime','retail','ecommerce'],
+      icon:'📦', label:'RETAIL', grad:'linear-gradient(135deg,#1c1000 0%,#332200 50%,#1a1000 100%)', accent:'#fb923c' },
+  ];
+
+  const match = VISUALS.find(v => v.keys.some(k => headline.includes(k) || cat.includes(k)));
+  const v = match || { icon:'📰', label:'MARKETS', grad:'linear-gradient(135deg,#0d1c30 0%,#122240 50%,#091527 100%)', accent:'#64748b' };
+
+  return `
+    <div style="width:100%;height:100%;background:${v.grad};
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;">
+      <div style="font-size:42px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5));">${v.icon}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+        color:${v.accent};text-transform:uppercase;opacity:.9;">${v.label}</div>
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,${v.accent}18 0%,transparent 70%);pointer-events:none;"></div>
+    </div>`;
+}
+
 function renderNews(news) {
   const el = document.getElementById('news-grid');
   el.innerHTML = news.map((n, i) => {
     const featured = i === 0;
     const sentiment = n.sentiment || 'neutral';
+    const imgContent = n.image
+      ? `<img src="${n.image}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;"
+           onerror="this.parentElement.innerHTML='${newsVisual(n).replace(/'/g,"\\'").replace(/\n/g,'')}';">`
+      : newsVisual(n);
     return `
       <a class="news-card${featured ? ' featured-news' : ''}" href="${n.url || '#'}" target="_blank" rel="noopener">
-        <div class="news-card-img">${n.image ? `<img src="${n.image}" alt="" loading="lazy">` : '📰'}</div>
+        <div class="news-card-img" style="overflow:hidden;">${imgContent}</div>
         <div class="news-card-body">
           <div class="news-card-source">
             ${n.source || 'News'} · ${n.time || timeAgo(n.datetime || n.published_at)}
