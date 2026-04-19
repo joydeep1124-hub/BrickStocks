@@ -338,7 +338,16 @@
 
   /* ── Profile fetch & nav render ───────────────────────── */
   async function fetchProfile(userId) {
-    const { data } = await getDb().from('profiles').select('*').eq('id', userId).maybeSingle();
+    let { data } = await getDb().from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (!data && currentUser) {
+      const username = (currentUser.email || '').split('@')[0];
+      await getDb().from('profiles').upsert({
+        id: userId, username, display_name: username,
+        chips: 100, portfolio_cash: 10000, tier: 'rookie', trophies: 0
+      });
+      const res = await getDb().from('profiles').select('*').eq('id', userId).maybeSingle();
+      data = res.data;
+    }
     currentProfile = data;
     return data;
   }
